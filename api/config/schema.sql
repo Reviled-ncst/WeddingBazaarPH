@@ -581,60 +581,58 @@ CREATE TABLE login_attempts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
     email VARCHAR(255) NOT NULL,
-    status ENUM('success', 'failed', 'blocked') NOT NULL,
-    failure_reason VARCHAR(100),
     ip_address VARCHAR(45) NOT NULL,
+    location VARCHAR(255),
+    success BOOLEAN DEFAULT FALSE,
+    failure_reason VARCHAR(100),
     user_agent TEXT,
-    location_data JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_email (email),
     INDEX idx_ip (ip_address),
-    INDEX idx_status (status),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Location Access Logs (tracks when users use location services)
-CREATE TABLE location_accesses (
+-- Location Logs table (tracks user geolocation)
+CREATE TABLE location_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    access_type ENUM('geolocation', 'address_search', 'map_view', 'distance_calc') NOT NULL,
-    status ENUM('success', 'denied', 'error', 'timeout') NOT NULL,
-    latitude DECIMAL(10, 8),
-    longitude DECIMAL(11, 8),
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
     accuracy DECIMAL(10, 2),
-    address_searched TEXT,
+    city VARCHAR(100),
+    province VARCHAR(100),
+    country VARCHAR(100) DEFAULT 'Philippines',
+    purpose VARCHAR(50),
     ip_address VARCHAR(45),
-    user_agent TEXT,
-    error_message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_user (user_id),
-    INDEX idx_type (access_type),
-    INDEX idx_status (status),
-    INDEX idx_created (created_at)
+    INDEX idx_created (created_at),
+    INDEX idx_location (latitude, longitude)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Complaints table
 CREATE TABLE complaints (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    reporter_id INT NOT NULL,
-    reported_type ENUM('vendor', 'coordinator', 'user') NOT NULL,
+    complainant_id INT NOT NULL,
     reported_id INT NOT NULL,
-    category ENUM('fraud', 'harassment', 'poor_service', 'no_show', 'payment_issue', 'other') NOT NULL,
+    reported_type ENUM('vendor', 'coordinator', 'user') NOT NULL,
+    category VARCHAR(50) NOT NULL,
     subject VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     evidence JSON,
     status ENUM('pending', 'investigating', 'resolved', 'dismissed') DEFAULT 'pending',
-    priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
+    priority ENUM('low', 'medium', 'high', 'critical') DEFAULT 'medium',
     assigned_to INT,
-    resolution_notes TEXT,
+    resolution TEXT,
     resolved_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (complainant_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reported_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_reporter (reporter_id),
+    INDEX idx_complainant (complainant_id),
     INDEX idx_reported (reported_type, reported_id),
     INDEX idx_status (status),
     INDEX idx_priority (priority),
@@ -646,10 +644,10 @@ CREATE TABLE support_tickets (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ticket_number VARCHAR(20) NOT NULL UNIQUE,
     user_id INT NOT NULL,
-    category ENUM('account', 'booking', 'payment', 'technical', 'verification', 'other') NOT NULL,
+    category VARCHAR(50) NOT NULL,
     subject VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    status ENUM('open', 'in_progress', 'waiting_response', 'resolved', 'closed') DEFAULT 'open',
+    status ENUM('open', 'in_progress', 'waiting', 'resolved', 'closed') DEFAULT 'open',
     priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
     assigned_to INT,
     resolved_at TIMESTAMP NULL,
@@ -657,23 +655,22 @@ CREATE TABLE support_tickets (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_ticket (ticket_number),
     INDEX idx_user (user_id),
     INDEX idx_status (status),
-    INDEX idx_priority (priority),
-    INDEX idx_ticket (ticket_number)
+    INDEX idx_priority (priority)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Support Ticket Messages (conversation thread)
-CREATE TABLE support_messages (
+-- Support Ticket Replies (conversation thread)
+CREATE TABLE ticket_replies (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ticket_id INT NOT NULL,
-    sender_id INT NOT NULL,
+    user_id INT NOT NULL,
     message TEXT NOT NULL,
-    attachments JSON,
     is_internal BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE,
-    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_ticket (ticket_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -756,16 +753,17 @@ CREATE TABLE user_sessions (
 -- Account Lockouts (security)
 CREATE TABLE account_lockouts (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    email VARCHAR(255) NOT NULL,
+    user_id INT NOT NULL,
     reason VARCHAR(100) NOT NULL,
-    locked_until TIMESTAMP NOT NULL,
-    failed_attempts INT DEFAULT 0,
     ip_address VARCHAR(45),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_email (email),
-    INDEX idx_locked_until (locked_until)
+    locked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    unlocked_at TIMESTAMP NULL,
+    unlocked_by INT,
+    unlock_reason VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (unlocked_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_user (user_id),
+    INDEX idx_locked (locked_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================

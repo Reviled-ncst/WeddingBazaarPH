@@ -5,12 +5,12 @@
 -- SEED SUPPORT TICKETS (using coupletest - user_id 27)
 -- =====================================================
 
-INSERT INTO support_tickets (user_id, category, subject, description, priority, status, created_at, updated_at) VALUES
-(27, 'payment', 'Payment not reflecting', 'I made a payment for my booking 2 days ago but it still shows as unpaid. My reference number is PAY-2026-0214.', 'high', 'open', '2026-02-20 09:30:00', '2026-02-20 09:30:00'),
-(27, 'booking', 'How to change event date?', 'I need to reschedule my wedding from June 15 to July 20. How can I do this?', 'medium', 'in_progress', '2026-02-18 14:15:00', '2026-02-19 10:00:00'),
-(27, 'vendor', 'Vendor not responding', 'I have been trying to contact the photographer for 3 days but no response. Can you help?', 'high', 'open', '2026-02-22 11:45:00', '2026-02-22 11:45:00'),
-(2, 'technical', 'Cannot upload profile picture', 'When I try to upload my profile photo, it shows an error message. I have tried different file formats.', 'low', 'resolved', '2026-02-10 16:20:00', '2026-02-11 09:00:00'),
-(2, 'payment', 'Request for invoice', 'Please send me the official invoice for my booking #3. I need it for my records.', 'medium', 'resolved', '2026-02-15 08:00:00', '2026-02-15 14:30:00');
+INSERT INTO support_tickets (ticket_number, user_id, category, subject, description, priority, status, created_at, updated_at) VALUES
+('TKT-000001', 27, 'payment', 'Payment not reflecting', 'I made a payment for my booking 2 days ago but it still shows as unpaid. My reference number is PAY-2026-0214.', 'high', 'open', '2026-02-20 09:30:00', '2026-02-20 09:30:00'),
+('TKT-000002', 27, 'booking', 'How to change event date?', 'I need to reschedule my wedding from June 15 to July 20. How can I do this?', 'medium', 'in_progress', '2026-02-18 14:15:00', '2026-02-19 10:00:00'),
+('TKT-000003', 27, 'technical', 'Vendor not responding', 'I have been trying to contact the photographer for 3 days but no response. Can you help?', 'high', 'open', '2026-02-22 11:45:00', '2026-02-22 11:45:00'),
+('TKT-000004', 2, 'technical', 'Cannot upload profile picture', 'When I try to upload my profile photo, it shows an error message. I have tried different file formats.', 'low', 'resolved', '2026-02-10 16:20:00', '2026-02-11 09:00:00'),
+('TKT-000005', 2, 'payment', 'Request for invoice', 'Please send me the official invoice for my booking #3. I need it for my records.', 'medium', 'resolved', '2026-02-15 08:00:00', '2026-02-15 14:30:00');
 
 -- =====================================================
 -- SEED TICKET REPLIES
@@ -33,25 +33,26 @@ INSERT INTO complaints (complainant_id, reported_id, reported_type, category, su
 
 -- =====================================================
 -- SEED LOGIN ATTEMPTS (for login security page)
+-- Uses 'success' boolean column: true=1, false=0
 -- =====================================================
 
 -- Successful logins
-INSERT INTO login_attempts (user_id, email, ip_address, status, user_agent, created_at) VALUES
-(26, 'admin@weddingbazaar.ph', '192.168.1.1', 'success', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0', '2026-02-24 08:00:00'),
-(26, 'admin@weddingbazaar.ph', '192.168.1.1', 'success', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0', '2026-02-23 09:15:00'),
-(27, 'coupletest@example.com', '192.168.1.50', 'success', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1', '2026-02-24 07:30:00'),
-(27, 'coupletest@example.com', '192.168.1.50', 'success', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1', '2026-02-22 14:20:00'),
-(2, 'couple@example.com', '192.168.1.100', 'success', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1', '2026-02-23 11:00:00');
+INSERT INTO login_attempts (user_id, email, ip_address, success, user_agent, created_at) VALUES
+(26, 'admin@weddingbazaar.ph', '192.168.1.1', 1, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0', '2026-02-24 08:00:00'),
+(26, 'admin@weddingbazaar.ph', '192.168.1.1', 1, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0', '2026-02-23 09:15:00'),
+(27, 'coupletest@example.com', '192.168.1.50', 1, 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1', '2026-02-24 07:30:00'),
+(27, 'coupletest@example.com', '192.168.1.50', 1, 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1', '2026-02-22 14:20:00'),
+(2, 'couple@example.com', '192.168.1.100', 1, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1', '2026-02-23 11:00:00');
 
 -- Failed login attempts (for security monitoring)
-INSERT INTO login_attempts (user_id, email, ip_address, status, failure_reason, user_agent, created_at) VALUES
-(NULL, 'admin@weddingbazaar.ph', '45.33.32.156', 'failed', 'Invalid password', 'Mozilla/5.0 (Linux; Android) AppleWebKit/537.36', '2026-02-24 03:15:00'),
-(NULL, 'admin@weddingbazaar.ph', '45.33.32.156', 'failed', 'Invalid password', 'Mozilla/5.0 (Linux; Android) AppleWebKit/537.36', '2026-02-24 03:15:30'),
-(NULL, 'admin@weddingbazaar.ph', '45.33.32.156', 'blocked', 'Too many failed attempts', 'Mozilla/5.0 (Linux; Android) AppleWebKit/537.36', '2026-02-24 03:16:00'),
-(NULL, 'test@hacker.com', '103.25.41.82', 'failed', 'User not found', 'curl/7.64.1', '2026-02-23 22:45:00'),
-(NULL, 'root@weddingbazaar.ph', '103.25.41.82', 'blocked', 'Suspicious activity', 'curl/7.64.1', '2026-02-23 22:45:05'),
-(NULL, 'coupletest@example.com', '192.168.1.50', 'failed', 'Invalid password', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1', '2026-02-24 07:28:00'),
-(NULL, 'coupletest@example.com', '192.168.1.50', 'failed', 'Invalid password', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1', '2026-02-24 07:29:00');
+INSERT INTO login_attempts (user_id, email, ip_address, success, failure_reason, user_agent, created_at) VALUES
+(NULL, 'admin@weddingbazaar.ph', '45.33.32.156', 0, 'Invalid password', 'Mozilla/5.0 (Linux; Android) AppleWebKit/537.36', '2026-02-24 03:15:00'),
+(NULL, 'admin@weddingbazaar.ph', '45.33.32.156', 0, 'Invalid password', 'Mozilla/5.0 (Linux; Android) AppleWebKit/537.36', '2026-02-24 03:15:30'),
+(NULL, 'admin@weddingbazaar.ph', '45.33.32.156', 0, 'Too many failed attempts', 'Mozilla/5.0 (Linux; Android) AppleWebKit/537.36', '2026-02-24 03:16:00'),
+(NULL, 'test@hacker.com', '103.25.41.82', 0, 'User not found', 'curl/7.64.1', '2026-02-23 22:45:00'),
+(NULL, 'root@weddingbazaar.ph', '103.25.41.82', 0, 'Suspicious activity', 'curl/7.64.1', '2026-02-23 22:45:05'),
+(NULL, 'coupletest@example.com', '192.168.1.50', 0, 'Invalid password', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1', '2026-02-24 07:28:00'),
+(NULL, 'coupletest@example.com', '192.168.1.50', 0, 'Invalid password', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Safari/605.1', '2026-02-24 07:29:00');
 
 -- =====================================================
 -- SEED LOCATION LOGS (for location tracking page)

@@ -102,6 +102,7 @@ try {
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS support_tickets (
             id INT AUTO_INCREMENT PRIMARY KEY,
+            ticket_number VARCHAR(20) NOT NULL UNIQUE,
             user_id INT NOT NULL,
             category VARCHAR(50) NOT NULL,
             subject VARCHAR(255) NOT NULL,
@@ -114,12 +115,22 @@ try {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+            INDEX idx_ticket (ticket_number),
             INDEX idx_status (status),
             INDEX idx_priority (priority),
             INDEX idx_user (user_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
     echo "✓ Created support_tickets table\n";
+    
+    // Add ticket_number column to existing table if missing
+    try {
+        $pdo->exec("ALTER TABLE support_tickets ADD COLUMN ticket_number VARCHAR(20) UNIQUE AFTER id");
+        $pdo->exec("UPDATE support_tickets SET ticket_number = CONCAT('TKT-', LPAD(id, 6, '0')) WHERE ticket_number IS NULL");
+        echo "✓ Added ticket_number column\n";
+    } catch (PDOException $e) {
+        // Column may already exist
+    }
 
     // Support Ticket Replies Table
     $pdo->exec("
