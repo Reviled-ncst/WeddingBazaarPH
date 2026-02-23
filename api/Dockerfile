@@ -6,6 +6,10 @@ RUN docker-php-ext-install pdo pdo_mysql
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
+# Disable conflicting MPM modules and enable prefork
+RUN a2dismod mpm_event mpm_worker 2>/dev/null || true
+RUN a2enmod mpm_prefork
+
 # Set the document root to /var/www/html
 ENV APACHE_DOCUMENT_ROOT=/var/www/html
 
@@ -13,8 +17,8 @@ ENV APACHE_DOCUMENT_ROOT=/var/www/html
 RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
 # Configure Apache to listen on PORT env variable (Railway sets this)
-RUN sed -i 's/Listen 80/Listen ${PORT}/g' /etc/apache2/ports.conf
-RUN sed -i 's/:80/:${PORT}/g' /etc/apache2/sites-available/000-default.conf
+RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/ports.conf
+RUN sed -i 's/:80/:8080/g' /etc/apache2/sites-available/000-default.conf
 
 # Copy the API files (from api folder when built from root)
 COPY api/ /var/www/html/
@@ -28,9 +32,9 @@ RUN mkdir -p /var/www/html/uploads/services \
     && chown -R www-data:www-data /var/www/html/uploads \
     && chmod -R 777 /var/www/html/uploads
 
-# Default port (Railway will override with PORT env var)
+# Default port
 ENV PORT=8080
 EXPOSE 8080
 
-# Start Apache with environment variable substitution
-CMD ["sh", "-c", "sed -i \"s/\\${PORT}/$PORT/g\" /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf && apache2-foreground"]
+# Start Apache
+CMD ["apache2-foreground"]
