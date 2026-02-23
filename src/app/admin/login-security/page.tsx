@@ -68,10 +68,12 @@ export default function LoginSecurityPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response?.success) {
-        setAttempts(response.attempts || []);
-        setTotalPages(response.pagination?.totalPages || 1);
-        setStats(response.stats || { success: 0, failed: 0, blocked: 0 });
+      // API wrapper returns {success, data} where data contains the actual response
+      const data = response?.data || response;
+      if (data?.success) {
+        setAttempts(data.attempts || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setStats(data.stats || { success: 0, failed: 0, blocked: 0 });
       } else {
         setAttempts([]);
         setTotalPages(1);
@@ -88,8 +90,10 @@ export default function LoginSecurityPage() {
   const fetchLockouts = useCallback(async () => {
     try {
       const response = await adminApi.getAccountLockouts({ active_only: true }) as any;
-      if (response?.success) {
-        setLockouts(response.lockouts || []);
+      // API wrapper returns {success, data} where data contains the actual response
+      const data = response?.data || response;
+      if (data?.success) {
+        setLockouts(data.lockouts || []);
       } else {
         setLockouts([]);
       }
