@@ -31,14 +31,14 @@ $period = $_GET['period'] ?? '7d'; // 7d, 30d, 90d, 365d
 $page = $_GET['page'] ?? null; // Specific page path filter
 
 // Calculate date range
-$days = match($period) {
-    '24h' => 1,
-    '7d' => 7,
-    '30d' => 30,
-    '90d' => 90,
-    '365d' => 365,
-    default => 7
-};
+switch($period) {
+    case '24h': $days = 1; break;
+    case '7d': $days = 7; break;
+    case '30d': $days = 30; break;
+    case '90d': $days = 90; break;
+    case '365d': $days = 365; break;
+    default: $days = 7;
+}
 
 $startDate = date('Y-m-d H:i:s', strtotime("-{$days} days"));
 

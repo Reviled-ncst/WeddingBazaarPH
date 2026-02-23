@@ -30,14 +30,14 @@ $pdo = getDBConnection();
 $period = $_GET['period'] ?? '30d';
 $groupBy = $_GET['groupBy'] ?? 'city'; // city, province, source, referrer
 
-$days = match($period) {
-    '24h' => 1,
-    '7d' => 7,
-    '30d' => 30,
-    '90d' => 90,
-    'all' => 365,
-    default => 30
-};
+switch($period) {
+    case '24h': $days = 1; break;
+    case '7d': $days = 7; break;
+    case '30d': $days = 30; break;
+    case '90d': $days = 90; break;
+    case 'all': $days = 365; break;
+    default: $days = 30;
+}
 
 $startDate = date('Y-m-d H:i:s', strtotime("-{$days} days"));
 
