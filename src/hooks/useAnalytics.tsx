@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://weddingbazaarph-testing.up.railway.app';
-const ANALYTICS_ENDPOINT = `${API_URL}/analytics/track.php`;
+const ANALYTICS_ENDPOINT = `${API_URL}/analytics/collect.php`;
 
 // Generate or retrieve session ID
 function getSessionId(): string {

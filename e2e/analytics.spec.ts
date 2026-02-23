@@ -92,7 +92,7 @@ test.describe('Heatmaps Page', () => {
 
 test.describe('Analytics Tracking API', () => {
   test('should accept pageview tracking', async ({ request }) => {
-    const response = await request.post(`${API_BASE_URL}/analytics/track.php`, {
+    const response = await request.post(`${API_BASE_URL}/analytics/collect.php`, {
       data: {
         type: 'pageview',
         sessionId: 'test-session-123',
@@ -110,7 +110,7 @@ test.describe('Analytics Tracking API', () => {
   });
 
   test('should accept click tracking', async ({ request }) => {
-    const response = await request.post(`${API_BASE_URL}/analytics/track.php`, {
+    const response = await request.post(`${API_BASE_URL}/analytics/collect.php`, {
       data: {
         type: 'click',
         sessionId: 'test-session-123',
@@ -128,7 +128,7 @@ test.describe('Analytics Tracking API', () => {
   });
 
   test('should accept scroll tracking', async ({ request }) => {
-    const response = await request.post(`${API_BASE_URL}/analytics/track.php`, {
+    const response = await request.post(`${API_BASE_URL}/analytics/collect.php`, {
       data: {
         type: 'scroll',
         sessionId: 'test-session-123',
@@ -144,7 +144,7 @@ test.describe('Analytics Tracking API', () => {
   });
 
   test('should accept custom event tracking', async ({ request }) => {
-    const response = await request.post(`${API_BASE_URL}/analytics/track.php`, {
+    const response = await request.post(`${API_BASE_URL}/analytics/collect.php`, {
       data: {
         type: 'event',
         sessionId: 'test-session-123',
@@ -161,7 +161,7 @@ test.describe('Analytics Tracking API', () => {
   });
 
   test('should reject invalid event type', async ({ request }) => {
-    const response = await request.post(`${API_BASE_URL}/analytics/track.php`, {
+    const response = await request.post(`${API_BASE_URL}/analytics/collect.php`, {
       data: {
         type: 'invalid_type',
         sessionId: 'test-session-123'
@@ -173,7 +173,7 @@ test.describe('Analytics Tracking API', () => {
   });
 
   test('should handle missing type gracefully', async ({ request }) => {
-    const response = await request.post(`${API_BASE_URL}/analytics/track.php`, {
+    const response = await request.post(`${API_BASE_URL}/analytics/collect.php`, {
       data: {
         sessionId: 'test-session-123'
       }
