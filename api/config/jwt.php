@@ -53,10 +53,36 @@ function verifyJWT($token) {
     return $payload;
 }
 
+// Polyfill for getallheaders() - not available in all PHP environments
+if (!function_exists('getallheaders')) {
+    function getallheaders() {
+        $headers = [];
+        foreach ($_SERVER as $name => $value) {
+            if (substr($name, 0, 5) === 'HTTP_') {
+                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+            }
+        }
+        return $headers;
+    }
+}
+
 // Get authenticated user from request
 function getAuthUser() {
     $headers = getallheaders();
-    $authHeader = $headers['Authorization'] ?? '';
+    
+    // Check both Authorization and authorization (case-insensitive)
+    $authHeader = '';
+    foreach ($headers as $key => $value) {
+        if (strtolower($key) === 'authorization') {
+            $authHeader = $value;
+            break;
+        }
+    }
+    
+    // Also check $_SERVER directly for Apache/Nginx
+    if (empty($authHeader)) {
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    }
     
     if (empty($authHeader) || !preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
         return null;
