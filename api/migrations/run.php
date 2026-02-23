@@ -51,7 +51,7 @@ $authMethod = 'none';
 
 // Check JWT first
 try {
-    $user = verifyJWT();
+    $user = getAuthUser();
     if ($user && $user['role'] === 'admin') {
         $authenticated = true;
         $authMethod = 'admin_jwt';
