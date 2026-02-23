@@ -16,8 +16,8 @@ RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/Allo
 RUN sed -i 's/Listen 80/Listen ${PORT}/g' /etc/apache2/ports.conf
 RUN sed -i 's/:80/:${PORT}/g' /etc/apache2/sites-available/000-default.conf
 
-# Copy the API files
-COPY . /var/www/html/
+# Copy the API files (from api folder when built from root)
+COPY api/ /var/www/html/
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \

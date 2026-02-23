@@ -1,0 +1,14 @@
+# Railway configuration for PHP API
+# This tells Railway to use the Dockerfile from the /api folder
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "api/Dockerfile"
+watchPatterns = ["api/**"]
+
+[deploy]
+numReplicas = 1
+healthcheckPath = "/health.php"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
