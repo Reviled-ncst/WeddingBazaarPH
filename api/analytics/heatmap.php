@@ -154,6 +154,62 @@ try {
             'avgScrollDepth' => round((float)$scrollStats['avg_depth'], 1),
             'maxScrollDepth' => round((float)$scrollStats['max_depth'], 1)
         ]);
+        
+    } elseif ($type === 'geo') {
+        // Geographic heatmap data from page views and bookings
+        
+        // Philippine city coordinates
+        $phCityCoords = [
+            'Manila' => [14.5995, 120.9842],
+            'Quezon City' => [14.6760, 121.0437],
+            'Makati' => [14.5547, 121.0244],
+            'Taguig' => [14.5176, 121.0509],
+            'Pasig' => [14.5764, 121.0851],
+            'Tagaytay' => [14.1153, 120.9621],
+            'Cebu City' => [10.3157, 123.8854],
+            'Davao City' => [7.1907, 125.4553],
+            'Baguio City' => [16.4023, 120.5960],
+            'Iloilo City' => [10.7202, 122.5621],
+            'Cagayan de Oro' => [8.4542, 124.6319]
+        ];
+        
+        // Get page views by city
+        $stmt = $pdo->prepare("
+            SELECT 
+                COALESCE(city, 'Unknown') as city,
+                COUNT(*) as views,
+                COUNT(DISTINCT session_id) as sessions
+            FROM page_views
+            WHERE created_at >= ?
+            AND city IS NOT NULL
+            GROUP BY city
+            ORDER BY views DESC
+            LIMIT 50
+        ");
+        $stmt->execute([$startDate]);
+        $viewsByCity = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Add coordinates
+        $geoData = [];
+        foreach ($viewsByCity as $location) {
+            $cityName = $location['city'];
+            if (isset($phCityCoords[$cityName])) {
+                $geoData[] = [
+                    'city' => $cityName,
+                    'lat' => $phCityCoords[$cityName][0],
+                    'lng' => $phCityCoords[$cityName][1],
+                    'views' => (int)$location['views'],
+                    'sessions' => (int)$location['sessions']
+                ];
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'period' => $period,
+            'geoData' => $geoData,
+            'viewsByCity' => $viewsByCity
+        ]);
     }
 } catch (Exception $e) {
     http_response_code(500);

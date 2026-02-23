@@ -57,20 +57,59 @@ try {
     
     $paymentMethod = $data['payment_method'] ?? null;
     
-    $stmt = $pdo->prepare("
-        INSERT INTO bookings (user_id, vendor_id, service_id, event_date, total_price, notes, payment_method, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-    ");
+    // Check if location/source columns exist
+    $columnCheck = $pdo->query("SHOW COLUMNS FROM bookings LIKE 'source_page'");
+    $hasSourceColumns = $columnCheck->rowCount() > 0;
     
-    $stmt->execute([
-        $data['user_id'],
-        $data['vendor_id'],
-        $data['service_id'],
-        $data['event_date'],
-        $totalPrice,
-        $data['notes'] ?? null,
-        $paymentMethod
-    ]);
+    if ($hasSourceColumns) {
+        // Insert with source tracking
+        $stmt = $pdo->prepare("
+            INSERT INTO bookings (
+                user_id, vendor_id, service_id, event_date, total_price, notes, payment_method, status,
+                source_page, referrer, utm_source, utm_medium, utm_campaign,
+                user_city, user_province, user_latitude, user_longitude,
+                device_type, browser, session_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        
+        $stmt->execute([
+            $data['user_id'],
+            $data['vendor_id'],
+            $data['service_id'],
+            $data['event_date'],
+            $totalPrice,
+            $data['notes'] ?? null,
+            $paymentMethod,
+            $data['source_page'] ?? null,
+            $data['referrer'] ?? null,
+            $data['utm_source'] ?? null,
+            $data['utm_medium'] ?? null,
+            $data['utm_campaign'] ?? null,
+            $data['user_city'] ?? null,
+            $data['user_province'] ?? null,
+            $data['user_latitude'] ?? null,
+            $data['user_longitude'] ?? null,
+            $data['device_type'] ?? null,
+            $data['browser'] ?? null,
+            $data['session_id'] ?? null
+        ]);
+    } else {
+        // Fallback without source tracking
+        $stmt = $pdo->prepare("
+            INSERT INTO bookings (user_id, vendor_id, service_id, event_date, total_price, notes, payment_method, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+        ");
+        
+        $stmt->execute([
+            $data['user_id'],
+            $data['vendor_id'],
+            $data['service_id'],
+            $data['event_date'],
+            $totalPrice,
+            $data['notes'] ?? null,
+            $paymentMethod
+        ]);
+    }
     
     $bookingId = $pdo->lastInsertId();
     

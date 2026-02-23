@@ -219,6 +219,32 @@ export function BookingModal({
     setIsSubmitting(true);
 
     try {
+      // Capture source tracking data
+      const sourcePage = typeof window !== 'undefined' ? window.location.pathname : null;
+      const referrer = typeof document !== 'undefined' ? document.referrer : null;
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const sessionId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('analytics_session') : null;
+      
+      // Detect device type
+      const getDeviceType = () => {
+        if (typeof window === 'undefined') return 'desktop';
+        const width = window.innerWidth;
+        if (width < 768) return 'mobile';
+        if (width < 1024) return 'tablet';
+        return 'desktop';
+      };
+      
+      // Get browser name
+      const getBrowser = () => {
+        if (typeof navigator === 'undefined') return 'unknown';
+        const ua = navigator.userAgent;
+        if (ua.includes('Firefox')) return 'Firefox';
+        if (ua.includes('Chrome')) return 'Chrome';
+        if (ua.includes('Safari')) return 'Safari';
+        if (ua.includes('Edge')) return 'Edge';
+        return 'Other';
+      };
+      
       const response = await fetch('http://localhost/wedding-bazaar-api/bookings/create.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -233,6 +259,18 @@ export function BookingModal({
           event_longitude: eventLocation.lng,
           event_address: eventLocation.address,
           notes: notes || null,
+          // Source tracking data
+          source_page: sourcePage,
+          referrer: referrer,
+          utm_source: urlParams?.get('utm_source'),
+          utm_medium: urlParams?.get('utm_medium'),
+          utm_campaign: urlParams?.get('utm_campaign'),
+          user_city: eventLocation.address?.split(',')[0] || null,
+          user_latitude: eventLocation.lat,
+          user_longitude: eventLocation.lng,
+          device_type: getDeviceType(),
+          browser: getBrowser(),
+          session_id: sessionId,
         }),
       });
 
