@@ -290,6 +290,98 @@ try {
     $stmt->execute([$startDate]);
     $summary = $stmt->fetch(PDO::FETCH_ASSOC);
     
+    // Get vendors by location
+    $vendorsByCity = [];
+    try {
+        $stmt = $pdo->query("
+            SELECT 
+                COALESCE(city, province, location, 'Unknown') as city,
+                latitude as lat,
+                longitude as lng,
+                COUNT(*) as vendor_count,
+                GROUP_CONCAT(DISTINCT category ORDER BY category SEPARATOR ', ') as categories
+            FROM vendors
+            WHERE is_active = 1
+            GROUP BY city, latitude, longitude
+            ORDER BY vendor_count DESC
+            LIMIT 50
+        ");
+        $vendorsByCity = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        // Vendors table may not have these columns
+    }
+    
+    // Build vendor geo data
+    $vendorGeoData = [];
+    foreach ($vendorsByCity as $location) {
+        $cityName = $location['city'] ?? 'Unknown';
+        $lat = $location['lat'];
+        $lng = $location['lng'];
+        
+        // Use coordinates from data or fallback to Philippine city coords
+        if (!$lat || !$lng) {
+            if (isset($phCityCoords[$cityName])) {
+                $lat = $phCityCoords[$cityName][0];
+                $lng = $phCityCoords[$cityName][1];
+            }
+        }
+        
+        if ($lat && $lng) {
+            $vendorGeoData[] = [
+                'city' => $cityName,
+                'lat' => (float)$lat,
+                'lng' => (float)$lng,
+                'value' => (int)$location['vendor_count'],
+                'categories' => $location['categories'] ?? ''
+            ];
+        }
+    }
+    
+    // Get coordinators by location
+    $coordinatorsByCity = [];
+    try {
+        $stmt = $pdo->query("
+            SELECT 
+                COALESCE(cp.city, cp.province, cp.location, 'Unknown') as city,
+                cp.latitude as lat,
+                cp.longitude as lng,
+                COUNT(*) as coordinator_count
+            FROM coordinator_profiles cp
+            JOIN users u ON cp.user_id = u.id
+            WHERE u.status = 'active'
+            GROUP BY cp.city, cp.latitude, cp.longitude
+            ORDER BY coordinator_count DESC
+            LIMIT 50
+        ");
+        $coordinatorsByCity = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        // Coordinator profiles table may not exist or have these columns
+    }
+    
+    // Build coordinator geo data
+    $coordinatorGeoData = [];
+    foreach ($coordinatorsByCity as $location) {
+        $cityName = $location['city'] ?? 'Unknown';
+        $lat = $location['lat'];
+        $lng = $location['lng'];
+        
+        if (!$lat || !$lng) {
+            if (isset($phCityCoords[$cityName])) {
+                $lat = $phCityCoords[$cityName][0];
+                $lng = $phCityCoords[$cityName][1];
+            }
+        }
+        
+        if ($lat && $lng) {
+            $coordinatorGeoData[] = [
+                'city' => $cityName,
+                'lat' => (float)$lat,
+                'lng' => (float)$lng,
+                'value' => (int)$location['coordinator_count']
+            ];
+        }
+    }
+    
     echo json_encode([
         'success' => true,
         'period' => $period,
@@ -304,7 +396,11 @@ try {
         'bySource' => $bySource ?? [],
         'byPage' => $byPage,
         'byDevice' => $byDevice,
-        'geoData' => $geoData
+        'geoData' => $geoData,
+        'vendorGeoData' => $vendorGeoData,
+        'coordinatorGeoData' => $coordinatorGeoData,
+        'vendorsByCity' => $vendorsByCity,
+        'coordinatorsByCity' => $coordinatorsByCity
     ]);
     
 } catch (Exception $e) {
