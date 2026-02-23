@@ -12,6 +12,10 @@ ENV APACHE_DOCUMENT_ROOT=/var/www/html
 # Configure Apache to allow .htaccess
 RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
+# Configure Apache to listen on PORT env variable (Railway sets this)
+RUN sed -i 's/Listen 80/Listen ${PORT}/g' /etc/apache2/ports.conf
+RUN sed -i 's/:80/:${PORT}/g' /etc/apache2/sites-available/000-default.conf
+
 # Copy the API files
 COPY . /var/www/html/
 
@@ -24,8 +28,9 @@ RUN mkdir -p /var/www/html/uploads/services \
     && chown -R www-data:www-data /var/www/html/uploads \
     && chmod -R 777 /var/www/html/uploads
 
-# Expose port (Railway will set PORT env var)
-EXPOSE 80
+# Default port (Railway will override with PORT env var)
+ENV PORT=8080
+EXPOSE 8080
 
-# Start Apache
-CMD ["apache2-foreground"]
+# Start Apache with environment variable substitution
+CMD ["sh", "-c", "sed -i \"s/\\${PORT}/$PORT/g\" /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf && apache2-foreground"]
