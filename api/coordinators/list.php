@@ -58,14 +58,14 @@ try {
             c.images,
             c.specialties,
             c.weddings_completed,
-            c.is_verified,
+            CASE WHEN c.verification_status = 'verified' THEN 1 ELSE 0 END as is_verified,
             u.name as owner_name,
             u.phone,
             u.email
         FROM coordinators c
         JOIN users u ON c.user_id = u.id
         WHERE $whereClause
-        ORDER BY c.is_verified DESC, c.rating DESC
+        ORDER BY c.verification_status DESC, c.rating DESC
         LIMIT ? OFFSET ?
     ";
 
