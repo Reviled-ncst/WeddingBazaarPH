@@ -28,6 +28,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $pdo = getDBConnection();
 
 try {
+    // Check if table exists
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'content_pages'");
+    if ($tableCheck->rowCount() === 0) {
+        echo json_encode([
+            'success' => true,
+            'data' => [],
+            'message' => 'Content pages table not yet created. Run CMS migration first.'
+        ]);
+        exit;
+    }
+    
     $stmt = $pdo->query("
         SELECT id, slug, title, meta_title, meta_description, 
                is_published, created_at, updated_at

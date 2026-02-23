@@ -28,6 +28,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $pdo = getDBConnection();
 
 try {
+    // Check if table exists
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'media_library'");
+    if ($tableCheck->rowCount() === 0) {
+        echo json_encode([
+            'success' => true,
+            'data' => ['items' => [], 'total' => 0, 'page' => 1, 'pages' => 0],
+            'message' => 'Media library table not yet created. Run CMS migration first.'
+        ]);
+        exit;
+    }
+    
     $category = isset($_GET['category']) ? $_GET['category'] : null;
     $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
     $limit = isset($_GET['limit']) ? min(100, max(1, intval($_GET['limit']))) : 20;

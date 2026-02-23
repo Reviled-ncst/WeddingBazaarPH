@@ -124,6 +124,21 @@ try {
         ]);
         
     } elseif ($type === 'scroll') {
+        // Check if scroll_events table exists
+        $scrollTableCheck = $pdo->query("SHOW TABLES LIKE 'scroll_events'");
+        if ($scrollTableCheck->rowCount() === 0) {
+            echo json_encode([
+                'success' => true,
+                'page' => $page,
+                'period' => $period,
+                'scrollDistribution' => [],
+                'avgScrollDepth' => 0,
+                'maxScrollDepth' => 0,
+                'message' => 'Scroll events table not yet created'
+            ]);
+            exit;
+        }
+        
         // Scroll depth distribution
         $stmt = $pdo->prepare("
             SELECT 
@@ -156,6 +171,19 @@ try {
         ]);
         
     } elseif ($type === 'geo') {
+        // Check if page_views table exists
+        $pvTableCheck = $pdo->query("SHOW TABLES LIKE 'page_views'");
+        if ($pvTableCheck->rowCount() === 0) {
+            echo json_encode([
+                'success' => true,
+                'period' => $period,
+                'geoData' => [],
+                'viewsByCity' => [],
+                'message' => 'Page views table not yet created'
+            ]);
+            exit;
+        }
+        
         // Geographic heatmap data from page views and bookings
         
         // Philippine city coordinates

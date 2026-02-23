@@ -28,6 +28,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $pdo = getDBConnection();
 
 try {
+    // Check if table exists
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'landing_sections'");
+    if ($tableCheck->rowCount() === 0) {
+        echo json_encode([
+            'success' => true,
+            'data' => [],
+            'message' => 'Landing sections table not yet created. Run CMS migration first.'
+        ]);
+        exit;
+    }
+    
     $stmt = $pdo->query("
         SELECT * FROM landing_sections 
         ORDER BY sort_order

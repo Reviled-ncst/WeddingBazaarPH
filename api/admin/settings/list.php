@@ -28,6 +28,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $pdo = getDBConnection();
 
 try {
+    // Check if table exists
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'site_settings'");
+    if ($tableCheck->rowCount() === 0) {
+        echo json_encode([
+            'success' => true,
+            'data' => ['settings' => [], 'grouped' => []],
+            'message' => 'Site settings table not yet created. Run CMS migration first.'
+        ]);
+        exit;
+    }
+    
     $group = isset($_GET['group']) ? $_GET['group'] : null;
     
     $sql = "SELECT * FROM site_settings";

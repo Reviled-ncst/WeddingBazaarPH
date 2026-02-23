@@ -20,6 +20,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $pdo = getDBConnection();
 
 try {
+    // Check if landing_sections table exists
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'landing_sections'");
+    if ($tableCheck->rowCount() === 0) {
+        // Return empty data if table doesn't exist
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'sections' => [],
+                'keyed' => []
+            ],
+            'message' => 'Landing sections table not yet created'
+        ]);
+        exit;
+    }
+    
     // Get specific section or all
     $sectionKey = isset($_GET['section']) ? trim($_GET['section']) : null;
     
