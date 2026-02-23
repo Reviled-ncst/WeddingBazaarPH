@@ -77,13 +77,13 @@ try {
     }
     
     if ($type === 'clicks') {
-        // Get click heatmap data
-        // Normalize clicks to common viewport size (1920x1080)
+        // Get click heatmap data - simplified query without complex grouping
         $stmt = $pdo->prepare("
             SELECT 
-                ROUND(click_x * (1920 / NULLIF(viewport_width, 0))) as x,
-                ROUND(click_y * (1080 / NULLIF(viewport_height, 0))) as y,
-                COUNT(*) as intensity,
+                click_x as x,
+                click_y as y,
+                viewport_width,
+                viewport_height,
                 element_tag,
                 element_id,
                 element_text
@@ -92,32 +92,36 @@ try {
             AND created_at >= ?
             AND viewport_width > 0
             AND viewport_height > 0
-            GROUP BY 
-                ROUND(click_x * (1920 / NULLIF(viewport_width, 0)) / 20) * 20,
-                ROUND(click_y * (1080 / NULLIF(viewport_height, 0)) / 20) * 20,
-                element_tag,
-                element_id,
-                element_text
-            ORDER BY intensity DESC
+            ORDER BY created_at DESC
             LIMIT 1000
         ");
         $stmt->execute([$page, $startDate]);
         $clicks = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Format for heatmap.js
+        // Normalize and aggregate in PHP
         $heatmapData = [];
+        $buckets = [];
         foreach ($clicks as $click) {
-            if ($click['x'] !== null && $click['y'] !== null) {
-                $heatmapData[] = [
-                    'x' => (int)$click['x'],
-                    'y' => (int)$click['y'],
-                    'value' => (int)$click['intensity'],
-                    'element' => $click['element_tag'],
-                    'elementId' => $click['element_id'],
-                    'text' => substr($click['element_text'] ?? '', 0, 50)
-                ];
+            if ($click['x'] !== null && $click['y'] !== null && $click['viewport_width'] > 0 && $click['viewport_height'] > 0) {
+                // Normalize to 1920x1080
+                $normX = (int)round($click['x'] * (1920 / $click['viewport_width']));
+                $normY = (int)round($click['y'] * (1080 / $click['viewport_height']));
+                // Bucket to 20px grid
+                $bucketKey = floor($normX / 20) . '_' . floor($normY / 20);
+                if (!isset($buckets[$bucketKey])) {
+                    $buckets[$bucketKey] = [
+                        'x' => $normX,
+                        'y' => $normY,
+                        'value' => 0,
+                        'element' => $click['element_tag'],
+                        'elementId' => $click['element_id'],
+                        'text' => substr($click['element_text'] ?? '', 0, 50)
+                    ];
+                }
+                $buckets[$bucketKey]['value']++;
             }
         }
+        $heatmapData = array_values($buckets);
         
         // Top clicked elements
         $stmt = $pdo->prepare("

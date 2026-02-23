@@ -170,6 +170,10 @@ $migrations = [
         'file' => __DIR__ . '/../config/booking_analytics_seed.sql',
         'description' => 'Demo booking data with Philippine locations for heatmaps'
     ],
+    'seed_admin_data' => [
+        'file' => __DIR__ . '/../config/seed_admin_data.sql',
+        'description' => 'Admin seed data: support tickets, complaints, login attempts'
+    ],
 ];
 
 // Check if specific migration requested

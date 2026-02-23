@@ -23,7 +23,7 @@ $pdo = getDBConnection();
 
 // Public access for GET, admin required for modifications
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    $user = verifyJWT();
+    $user = getAuthUser();
     if (!$user || $user['role'] !== 'admin') {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Unauthorized']);
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
 
         // Only show published for non-admin
-        $user = verifyJWT();
+        $user = getAuthUser();
         if (!$user || $user['role'] !== 'admin') {
             $sql .= " AND ha.is_published = 1";
         }
