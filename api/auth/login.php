@@ -39,13 +39,13 @@ $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unk
 $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
 // Helper function to log login attempt
-function logLoginAttempt($pdo, $userId, $email, $status, $ipAddress, $userAgent, $failureReason = null) {
+function logLoginAttempt($pdo, $userId, $email, $success, $ipAddress, $userAgent, $failureReason = null) {
     try {
         $stmt = $pdo->prepare('
-            INSERT INTO login_attempts (user_id, email, ip_address, user_agent, status, failure_reason, created_at)
+            INSERT INTO login_attempts (user_id, email, ip_address, user_agent, success, failure_reason, created_at)
             VALUES (?, ?, ?, ?, ?, ?, NOW())
         ');
-        $stmt->execute([$userId, $email, $ipAddress, $userAgent, $status, $failureReason]);
+        $stmt->execute([$userId, $email, $ipAddress, $userAgent, $success ? 1 : 0, $failureReason]);
     } catch (Exception $e) {
         // Silently fail - don't break login if logging fails
         error_log("Failed to log login attempt: " . $e->getMessage());
@@ -72,7 +72,7 @@ $user = $stmt->fetch();
 
 if (!$user) {
     // Log failed attempt - user not found
-    logLoginAttempt($pdo, null, $email, 'failed', $ipAddress, $userAgent, 'User not found');
+    logLoginAttempt($pdo, null, $email, false, $ipAddress, $userAgent, 'User not found');
     
     http_response_code(401);
     echo json_encode([
@@ -84,7 +84,7 @@ if (!$user) {
 
 // Check if user is suspended
 if (isset($user['status']) && $user['status'] === 'suspended') {
-    logLoginAttempt($pdo, $user['id'], $email, 'blocked', $ipAddress, $userAgent, 'Account suspended');
+    logLoginAttempt($pdo, $user['id'], $email, false, $ipAddress, $userAgent, 'Account suspended');
     
     http_response_code(403);
     echo json_encode([
@@ -97,7 +97,7 @@ if (isset($user['status']) && $user['status'] === 'suspended') {
 // Verify password
 if (!password_verify($password, $user['password'])) {
     // Log failed attempt - wrong password
-    logLoginAttempt($pdo, $user['id'], $email, 'failed', $ipAddress, $userAgent, 'Invalid password');
+    logLoginAttempt($pdo, $user['id'], $email, false, $ipAddress, $userAgent, 'Invalid password');
     
     http_response_code(401);
     echo json_encode([
@@ -108,7 +108,7 @@ if (!password_verify($password, $user['password'])) {
 }
 
 // Log successful login
-logLoginAttempt($pdo, $user['id'], $email, 'success', $ipAddress, $userAgent);
+logLoginAttempt($pdo, $user['id'], $email, true, $ipAddress, $userAgent);
 
 // Generate JWT token
 $token = generateJWT($user['id'], $user['email'], $user['role']);

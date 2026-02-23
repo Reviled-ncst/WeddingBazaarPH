@@ -37,13 +37,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
         if ($type === 'attempts') {
             // Build WHERE conditions
+            // Note: Table uses 'success' boolean column, we derive status from it
             $where = [];
             $params = [];
             
-            if ($statusFilter && in_array($statusFilter, ['success', 'failed', 'blocked'])) {
-                $where[] = "la.status = ?";
-                $params[] = $statusFilter;
+            if ($statusFilter === 'success') {
+                $where[] = "la.success = 1";
+            } elseif ($statusFilter === 'failed') {
+                $where[] = "la.success = 0";
             }
+            // 'blocked' status not stored in this table - would need account_lockouts
             
             if ($search) {
                 $where[] = "(la.email LIKE ? OR la.ip_address LIKE ? OR u.name LIKE ?)";
@@ -56,7 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             
             $sql = "
                 SELECT la.id, la.user_id, la.email, la.ip_address, la.user_agent,
-                       la.status, la.failure_reason, la.created_at,
+                       CASE WHEN la.success = 1 THEN 'success' ELSE 'failed' END as status,
+                       la.failure_reason, la.created_at, la.location,
                        u.name as user_name, u.role as user_role
                 FROM login_attempts la
                 LEFT JOIN users u ON la.user_id = u.id
@@ -74,14 +78,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $stmt->execute($params);
             $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-            // Get stats (last 24 hours)
-            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE status = 'success' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+            // Get stats (all time, since seed data has old dates)
+            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE success = 1");
             $successCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
-            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE status = 'failed' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE success = 0");
             $failedCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
-            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE status = 'blocked' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+            // Blocked count from account_lockouts
+            $stmt = $pdo->query("SELECT COUNT(*) as count FROM account_lockouts WHERE unlocked_at IS NULL");
             $blockedCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
             echo json_encode([
