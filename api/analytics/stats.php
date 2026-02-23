@@ -114,18 +114,21 @@ try {
     $stmt->execute($params);
     $avgScrollDepth = round((float)$stmt->fetch(PDO::FETCH_ASSOC)['avg_scroll'], 1);
     
-    // Bounce rate (sessions with only 1 page view)
+    // Bounce rate (sessions with only 1 page view - calculated from page_views)
     $stmt = $pdo->prepare("
-        SELECT 
-            COUNT(*) as bounces,
-            (SELECT COUNT(DISTINCT session_id) FROM page_views $whereClause) as total
-        FROM user_sessions 
-        WHERE is_bounce = TRUE AND started_at >= ?
+        SELECT COUNT(*) as single_page_sessions
+        FROM (
+            SELECT session_id, COUNT(*) as page_count 
+            FROM page_views 
+            $whereClause 
+            GROUP BY session_id 
+            HAVING page_count = 1
+        ) as bounces
     ");
-    $stmt->execute([$startDate]);
-    $bounceData = $stmt->fetch(PDO::FETCH_ASSOC);
-    $bounceRate = $bounceData['total'] > 0 
-        ? round(($bounceData['bounces'] / $bounceData['total']) * 100, 1)
+    $stmt->execute($params);
+    $bounces = (int)$stmt->fetch(PDO::FETCH_ASSOC)['single_page_sessions'];
+    $bounceRate = $uniqueVisitors > 0 
+        ? round(($bounces / $uniqueVisitors) * 100, 1)
         : 0;
     
     // Total clicks
