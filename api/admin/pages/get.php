@@ -1,5 +1,22 @@
 <?php
 // Admin: Get a page by ID for editing
+
+// Must be first - suppress ALL PHP errors as HTML
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
+
+set_error_handler(function($severity, $message, $file, $line) {
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+set_exception_handler(function($e) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => $e->getMessage(), 'data' => null]);
+    exit;
+});
+
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/jwt.php';
 
