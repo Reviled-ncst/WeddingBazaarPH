@@ -1,0 +1,2 @@
+# Disable Nixpacks auto-detection - use Dockerfile instead
+providers = []

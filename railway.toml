@@ -1,10 +1,9 @@
 # Railway configuration for PHP API
-# This tells Railway to use the Dockerfile from the /api folder
+# Forces Railway to use Dockerfile instead of auto-detecting Next.js
 
 [build]
 builder = "dockerfile"
-dockerfilePath = "api/Dockerfile"
-watchPatterns = ["api/**"]
+dockerfilePath = "Dockerfile"
 
 [deploy]
 numReplicas = 1
