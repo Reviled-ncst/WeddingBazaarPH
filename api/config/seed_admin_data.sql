@@ -57,7 +57,7 @@ INSERT INTO login_attempts (user_id, email, ip_address, location, success, failu
 -- SEED LOCATION LOGS (for location tracking page)
 -- =====================================================
 
-INSERT INTO location_logs (user_id, ip_address, city, region, country, latitude, longitude, action, created_at) VALUES
+INSERT INTO location_logs (user_id, ip_address, city, province, country, latitude, longitude, purpose, created_at) VALUES
 (26, '192.168.1.1', 'Manila', 'Metro Manila', 'Philippines', 14.5995, 120.9842, 'login', '2026-02-24 08:00:00'),
 (27, '192.168.1.50', 'Quezon City', 'Metro Manila', 'Philippines', 14.6760, 121.0437, 'login', '2026-02-24 07:30:00'),
 (2, '192.168.1.100', 'Makati', 'Metro Manila', 'Philippines', 14.5547, 121.0244, 'login', '2026-02-23 11:00:00'),
