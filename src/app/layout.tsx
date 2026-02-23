@@ -4,7 +4,9 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { CategoriesProvider } from "@/contexts/CategoriesContext";
+import { CMSProvider } from "@/contexts/CMSContext";
 import { FirstTimeLoader } from "@/components/FirstTimeLoader";
+import { AnalyticsProvider } from "@/hooks/useAnalytics";
 
 export const metadata: Metadata = {
   title: "Wedding Bazaar - Find Perfect Wedding Providers",
@@ -22,13 +24,17 @@ export default function RootLayout({
       <body className="antialiased min-h-screen flex flex-col">
         <AuthProvider>
           <CategoriesProvider>
-            <FirstTimeLoader>
-              <Header />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
-            </FirstTimeLoader>
+            <CMSProvider>
+              <AnalyticsProvider>
+                <FirstTimeLoader>
+                  <Header />
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  <Footer />
+                </FirstTimeLoader>
+              </AnalyticsProvider>
+            </CMSProvider>
           </CategoriesProvider>
         </AuthProvider>
       </body>

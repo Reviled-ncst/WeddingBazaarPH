@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api';
 import {
   FolderTree,
   Plus,
@@ -15,7 +16,8 @@ import {
   Eye,
   EyeOff,
   Save,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 
 interface Subcategory {
@@ -38,33 +40,38 @@ interface Category {
   vendor_count: number;
 }
 
-const mockCategories: Category[] = [
-  { id: 1, name: 'Photography', slug: 'photography', description: 'Professional wedding photography', icon: 'camera', is_active: true, sort_order: 1, vendor_count: 45, subcategories: [
-    { id: 1, name: 'Traditional Photography', slug: 'traditional', is_active: true, sort_order: 1 },
-    { id: 2, name: 'Photojournalistic', slug: 'photojournalistic', is_active: true, sort_order: 2 },
-    { id: 3, name: 'Drone Photography', slug: 'drone', is_active: true, sort_order: 3 },
-  ]},
-  { id: 2, name: 'Videography', slug: 'videography', description: 'Wedding films and video coverage', icon: 'video', is_active: true, sort_order: 2, vendor_count: 32, subcategories: [
-    { id: 4, name: 'Cinematic Films', slug: 'cinematic', is_active: true, sort_order: 1 },
-    { id: 5, name: 'Documentary Style', slug: 'documentary', is_active: true, sort_order: 2 },
-  ]},
-  { id: 3, name: 'Venues', slug: 'venues', description: 'Wedding venues and reception halls', icon: 'building', is_active: true, sort_order: 3, vendor_count: 28, subcategories: [
-    { id: 6, name: 'Indoor Venues', slug: 'indoor', is_active: true, sort_order: 1 },
-    { id: 7, name: 'Garden/Outdoor', slug: 'garden-outdoor', is_active: true, sort_order: 2 },
-    { id: 8, name: 'Beach Venues', slug: 'beach', is_active: true, sort_order: 3 },
-  ]},
-  { id: 4, name: 'Catering', slug: 'catering', description: 'Food and beverage services', icon: 'utensils', is_active: true, sort_order: 4, vendor_count: 56, subcategories: [] },
-  { id: 5, name: 'Hair & Makeup', slug: 'hair-makeup', description: 'Bridal makeup and hair styling', icon: 'sparkles', is_active: true, sort_order: 5, vendor_count: 67, subcategories: [] },
-  { id: 6, name: 'Music & Entertainment', slug: 'music-entertainment', description: 'DJs, bands, and entertainment', icon: 'music', is_active: false, sort_order: 6, vendor_count: 23, subcategories: [] },
-];
-
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   const [editingCategory, setEditingCategory] = useState<number | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSubcategoryModal, setShowSubcategoryModal] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get<{ categories: Category[] }>('/admin/categories/list.php');
+        if (response.data?.categories) {
+          // Ensure vendor_count and subcategories exist
+          const categoriesWithDefaults = response.data.categories.map(cat => ({
+            ...cat,
+            vendor_count: cat.vendor_count || 0,
+            subcategories: cat.subcategories || [],
+          }));
+          setCategories(categoriesWithDefaults);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const toggleExpand = (id: number) => {
     setExpandedCategories(prev => {
@@ -128,7 +135,27 @@ export default function CategoriesPage() {
         </div>
       </Card>
 
+      {/* Loading State */}
+      {loading && (
+        <Card className="p-8">
+          <div className="flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-pink-400 animate-spin" />
+          </div>
+        </Card>
+      )}
+
+      {/* Empty State */}
+      {!loading && categories.length === 0 && (
+        <Card className="p-8">
+          <div className="text-center text-dark-400">
+            <FolderTree className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>No categories found.</p>
+          </div>
+        </Card>
+      )}
+
       {/* Categories List */}
+      {!loading && filteredCategories.length > 0 && (
       <Card className="divide-y divide-dark-800">
         {filteredCategories.map((category) => (
           <div key={category.id}>
@@ -243,13 +270,14 @@ export default function CategoriesPage() {
           </div>
         ))}
 
-        {filteredCategories.length === 0 && (
+        {filteredCategories.length === 0 && !loading && (
           <div className="p-8 text-center">
             <FolderTree className="w-12 h-12 text-dark-600 mx-auto mb-3" />
-            <p className="text-dark-400">No categories found</p>
+            <p className="text-dark-400">No categories match your search</p>
           </div>
         )}
       </Card>
+      )}
 
       {/* Add Category Modal */}
       {showAddModal && (

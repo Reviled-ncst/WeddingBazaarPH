@@ -21,11 +21,19 @@ import {
   Menu,
   LogOut,
   Bell,
-  Search
+  Search,
+  FileText,
+  Layout,
+  Image,
+  Globe,
+  BarChart3,
+  MousePointer
 } from 'lucide-react';
 
 const adminNavItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+  { name: 'Heatmaps', href: '/admin/heatmaps', icon: MousePointer },
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Categories', href: '/admin/categories', icon: FolderTree },
   { name: 'Services', href: '/admin/services', icon: Package },
@@ -36,6 +44,10 @@ const adminNavItems = [
   { name: 'Login Security', href: '/admin/login-security', icon: KeyRound },
   { name: 'Location Logs', href: '/admin/location-logs', icon: MapPin },
   { name: 'Help Center', href: '/admin/help-center', icon: HelpCircle },
+  { name: 'Site Settings', href: '/admin/cms/settings', icon: Globe },
+  { name: 'Pages', href: '/admin/cms/pages', icon: FileText },
+  { name: 'Landing Page', href: '/admin/cms/landing', icon: Layout },
+  { name: 'Media', href: '/admin/cms/media', icon: Image },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 

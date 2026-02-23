@@ -1,5 +1,8 @@
+'use client';
+
 import Link from 'next/link';
 import { Heart, Instagram, Facebook, Twitter, Mail, Phone, MapPin } from 'lucide-react';
+import { useCMSContext } from '@/contexts/CMSContext';
 
 const footerLinks = {
   providers: [
@@ -25,6 +28,16 @@ const footerLinks = {
 };
 
 export function Footer() {
+  const { getSetting } = useCMSContext();
+  
+  const email = getSetting('contact', 'email', 'hello@weddingbazaar.ph');
+  const phone = getSetting('contact', 'phone', '+63 917 123 4567');
+  const address = getSetting('contact', 'address', 'Manila, Philippines');
+  const facebook = getSetting('social', 'facebook', 'https://facebook.com');
+  const instagram = getSetting('social', 'instagram', 'https://instagram.com');
+  const twitter = getSetting('social', 'twitter', 'https://twitter.com');
+  const copyrightText = getSetting('footer', 'copyright_text', '© 2026 WeddingBazaar. All rights reserved.');
+  
   return (
     <footer className="bg-dark-950 text-white border-t border-dark-800">
       {/* Main Footer */}
@@ -48,15 +61,15 @@ export function Footer() {
             <div className="space-y-3 text-dark-400">
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-pink-400" />
-                <span>hello@weddingbazaar.ph</span>
+                <span>{email}</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-pink-400" />
-                <span>+63 917 123 4567</span>
+                <span>{phone}</span>
               </div>
               <div className="flex items-center space-x-3">
                 <MapPin className="w-5 h-5 text-pink-400" />
-                <span>Manila, Philippines</span>
+                <span>{address}</span>
               </div>
             </div>
           </div>
@@ -119,36 +132,42 @@ export function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
             <p className="text-dark-400 text-sm">
-              © 2026 WeddingBazaar. All rights reserved. Made with{' '}
+              {copyrightText} Made with{' '}
               <Heart className="w-4 h-4 inline text-pink-400 fill-pink-400" /> in the Philippines
             </p>
 
             {/* Social Links */}
             <div className="flex items-center space-x-4">
-              <a 
-                href="https://instagram.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="p-2 text-dark-400 hover:text-pink-400 transition-colors"
-              >
-                <Instagram className="w-5 h-5" />
-              </a>
-              <a 
-                href="https://facebook.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="p-2 text-dark-400 hover:text-pink-400 transition-colors"
-              >
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a 
-                href="https://twitter.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="p-2 text-dark-400 hover:text-pink-400 transition-colors"
-              >
-                <Twitter className="w-5 h-5" />
-              </a>
+              {instagram && (
+                <a 
+                  href={instagram} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="p-2 text-dark-400 hover:text-pink-400 transition-colors"
+                >
+                  <Instagram className="w-5 h-5" />
+                </a>
+              )}
+              {facebook && (
+                <a 
+                  href={facebook} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="p-2 text-dark-400 hover:text-pink-400 transition-colors"
+                >
+                  <Facebook className="w-5 h-5" />
+                </a>
+              )}
+              {twitter && (
+                <a 
+                  href={twitter} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="p-2 text-dark-400 hover:text-pink-400 transition-colors"
+                >
+                  <Twitter className="w-5 h-5" />
+                </a>
+              )}
             </div>
           </div>
         </div>
