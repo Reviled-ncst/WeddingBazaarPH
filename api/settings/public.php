@@ -18,7 +18,35 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 $pdo = getDBConnection();
 
+// Default settings fallback
+$defaultSettings = [
+    'contact' => [
+        'contact_email' => 'hello@weddingbazaar.ph',
+        'contact_phone' => '+63 917 123 4567',
+        'contact_address' => 'BGC, Taguig City, Metro Manila'
+    ],
+    'social' => [
+        'social_facebook' => 'https://facebook.com/weddingbazaarph',
+        'social_instagram' => 'https://instagram.com/weddingbazaarph'
+    ],
+    'branding' => [
+        'site_name' => 'WeddingBazaar',
+        'site_tagline' => 'Plan Your Perfect Wedding'
+    ]
+];
+
 try {
+    // Check if table exists
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'site_settings'");
+    if ($tableCheck->rowCount() === 0) {
+        echo json_encode([
+            'success' => true,
+            'data' => $defaultSettings,
+            'source' => 'defaults'
+        ]);
+        exit;
+    }
+    
     // Get all public settings grouped
     $stmt = $pdo->query("SELECT setting_key, setting_value, setting_group FROM site_settings ORDER BY setting_group, sort_order");
     $rows = $stmt->fetchAll();

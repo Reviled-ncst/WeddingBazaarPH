@@ -4,6 +4,10 @@
  * GET: Retrieve click data for heatmap visualization
  */
 
+// Suppress PHP errors from being output as HTML
+error_reporting(0);
+ini_set('display_errors', '0');
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
@@ -31,12 +35,13 @@ $page = $_GET['page'] ?? '/';
 $period = $_GET['period'] ?? '7d';
 $type = $_GET['type'] ?? 'clicks'; // clicks, scroll
 
-$days = match($period) {
-    '24h' => 1,
-    '7d' => 7,
-    '30d' => 30,
-    default => 7
-};
+// Get days based on period
+switch($period) {
+    case '24h': $days = 1; break;
+    case '7d': $days = 7; break;
+    case '30d': $days = 30; break;
+    default: $days = 7;
+}
 
 $startDate = date('Y-m-d H:i:s', strtotime("-{$days} days"));
 
