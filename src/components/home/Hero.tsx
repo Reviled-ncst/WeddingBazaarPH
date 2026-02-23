@@ -1,9 +1,32 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 export function Hero() {
+  const [stats, setStats] = useState({ happyCouples: 1000 });
+
+  useEffect(() => {
+    fetch(`${API_URL}/public/stats.php`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.stats) {
+          setStats(data.stats);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Format number with + suffix
+  const formatCount = (num: number) => {
+    if (num >= 10000) return `${Math.floor(num / 1000)}k+`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1).replace('.0', '')}k+`;
+    return `${num}+`;
+  };
+
   return (
     <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
       {/* Background Image */}
@@ -47,7 +70,7 @@ export function Hero() {
 
         {/* Trust Badge */}
         <p className="mt-10 text-dark-400 text-sm">
-          Trusted by <span className="text-pink-300 font-medium">10,000+</span> couples across the Philippines
+          Trusted by <span className="text-pink-300 font-medium">{formatCount(stats.happyCouples)}</span> couples across the Philippines
         </p>
       </div>
     </section>

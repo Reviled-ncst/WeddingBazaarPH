@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/Card';
 import { ChevronDown, ChevronUp, Search, MessageCircle, Mail, Phone, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface FAQ {
   id: number;
   question: string;
@@ -12,11 +14,20 @@ interface FAQ {
   category?: string;
 }
 
+interface ContactSettings {
+  email: string;
+  phone: string;
+}
+
 export default function HelpPage() {
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [contact, setContact] = useState<ContactSettings>({
+    email: 'hello@weddingbazaar.ph',
+    phone: '+63 917 123 4567'
+  });
 
   useEffect(() => {
     const fetchFaqs = async () => {
@@ -33,7 +44,20 @@ export default function HelpPage() {
       }
     };
 
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch(`${API_URL}/public/settings.php`);
+        const data = await res.json();
+        if (data.success && data.grouped?.contact) {
+          setContact(data.grouped.contact);
+        }
+      } catch (err) {
+        console.error('Failed to fetch settings:', err);
+      }
+    };
+
     fetchFaqs();
+    fetchSettings();
   }, []);
 
   const filteredFaqs = faqs.filter(faq => 
@@ -118,12 +142,12 @@ export default function HelpPage() {
           <Card className="p-6 text-center hover:border-pink-500/50 transition-colors cursor-pointer">
             <Mail className="w-10 h-10 text-pink-400 mx-auto mb-3" />
             <h3 className="text-white font-medium mb-1">Email Us</h3>
-            <p className="text-dark-400 text-sm">support@weddingbazaar.ph</p>
+            <p className="text-dark-400 text-sm">{contact.email}</p>
           </Card>
           <Card className="p-6 text-center hover:border-pink-500/50 transition-colors cursor-pointer">
             <Phone className="w-10 h-10 text-pink-400 mx-auto mb-3" />
             <h3 className="text-white font-medium mb-1">Call Us</h3>
-            <p className="text-dark-400 text-sm">+63 917 123 4567</p>
+            <p className="text-dark-400 text-sm">{contact.phone}</p>
           </Card>
         </div>
       </div>

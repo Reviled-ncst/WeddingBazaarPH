@@ -1,9 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Mail, Phone, MapPin, Send, Clock } from 'lucide-react';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
+interface ContactSettings {
+  email: string;
+  phone: string;
+  address: string;
+  hours: string;
+}
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -14,6 +23,23 @@ export default function ContactPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [contact, setContact] = useState<ContactSettings>({
+    email: 'hello@weddingbazaar.ph',
+    phone: '+63 917 123 4567',
+    address: 'BGC, Taguig City, Metro Manila, Philippines',
+    hours: 'Mon-Fri: 9AM-6PM, Sat: 10AM-4PM'
+  });
+
+  useEffect(() => {
+    fetch(`${API_URL}/public/settings.php`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.grouped?.contact) {
+          setContact(data.grouped.contact);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +49,11 @@ export default function ContactPage() {
     setSubmitted(true);
     setIsSubmitting(false);
   };
+
+  // Split address into lines
+  const addressLines = contact.address.split(',').map(s => s.trim());
+  // Split hours
+  const hoursLines = contact.hours.split(',').map(s => s.trim());
 
   return (
     <div className="min-h-screen bg-dark-950 py-16">
@@ -42,8 +73,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-medium mb-1">Email</h3>
-                  <p className="text-dark-400">support@weddingbazaar.ph</p>
-                  <p className="text-dark-400">hello@weddingbazaar.ph</p>
+                  <p className="text-dark-400">{contact.email}</p>
                 </div>
               </div>
             </Card>
@@ -55,8 +85,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-medium mb-1">Phone</h3>
-                  <p className="text-dark-400">+63 917 123 4567</p>
-                  <p className="text-dark-400">+63 2 8888 9999</p>
+                  <p className="text-dark-400">{contact.phone}</p>
                 </div>
               </div>
             </Card>
@@ -68,8 +97,9 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-medium mb-1">Address</h3>
-                  <p className="text-dark-400">123 Wedding Street</p>
-                  <p className="text-dark-400">Makati City, Philippines</p>
+                  {addressLines.map((line, i) => (
+                    <p key={i} className="text-dark-400">{line}</p>
+                  ))}
                 </div>
               </div>
             </Card>
@@ -81,8 +111,9 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="text-white font-medium mb-1">Business Hours</h3>
-                  <p className="text-dark-400">Mon - Fri: 9AM - 6PM</p>
-                  <p className="text-dark-400">Sat: 10AM - 4PM</p>
+                  {hoursLines.map((line, i) => (
+                    <p key={i} className="text-dark-400">{line}</p>
+                  ))}
                 </div>
               </div>
             </Card>
