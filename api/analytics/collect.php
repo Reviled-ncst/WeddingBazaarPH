@@ -4,6 +4,25 @@
  * POST: Track page views, clicks, scroll events
  */
 
+// Must be first - suppress ALL PHP errors as HTML
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
+
+set_error_handler(function($severity, $message, $file, $line) {
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+set_exception_handler(function($e) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
+    exit;
+});
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -30,6 +49,15 @@ if (!$input || !isset($input['type'])) {
 }
 
 $pdo = getDBConnection();
+
+// Check if analytics tables exist
+$tableCheck = @$pdo->query("SHOW TABLES LIKE 'page_views'");
+if (!$tableCheck || $tableCheck->rowCount() === 0) {
+    // Silently accept but don't store - tables don't exist yet
+    echo json_encode(['success' => true, 'message' => 'Analytics tables not created yet']);
+    exit;
+}
+
 $type = $input['type'];
 $sessionId = $input['sessionId'] ?? bin2hex(random_bytes(32));
 
