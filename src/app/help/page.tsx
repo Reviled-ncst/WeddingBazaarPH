@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { ChevronDown, ChevronUp, Search, MessageCircle, Mail, Phone, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
 interface FAQ {
   id: number;

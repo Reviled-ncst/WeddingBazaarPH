@@ -186,7 +186,7 @@ export function MessageVendorModal({
               >
                 {isSubmitting ? (
                   <>
-                    <span className="animate-spin mr-2">?</span>
+                    <span className="animate-spin mr-2">⏳</span>
                     Sending...
                   </>
                 ) : !userId ? (

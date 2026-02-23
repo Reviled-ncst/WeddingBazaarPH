@@ -490,7 +490,7 @@ export function BookingModal({
                               </div>
                               {vendorTravelInfo?.free_km_radius && vendorTravelInfo.free_km_radius > 0 && (
                                 <p className="text-gray-500 text-xs mt-2">
-                                  Free within {vendorTravelInfo.free_km_radius}km � Base: ?{vendorTravelInfo.base_travel_fee} � ?{vendorTravelInfo.per_km_rate}/km after
+                                  Free within {vendorTravelInfo.free_km_radius}km • Base: ₱{vendorTravelInfo.base_travel_fee} • ₱{vendorTravelInfo.per_km_rate}/km after
                                 </p>
                               )}
                             </div>
@@ -631,7 +631,7 @@ export function BookingModal({
               >
                 {isSubmitting ? (
                   <>
-                    <span className="animate-spin mr-2">?</span>
+                    <span className="animate-spin mr-2">⏳</span>
                     Creating Booking...
                   </>
                 ) : !userId ? (

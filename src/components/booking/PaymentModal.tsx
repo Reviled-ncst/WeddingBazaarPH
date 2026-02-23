@@ -606,7 +606,7 @@ export function PaymentModal({
                 
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4">
                   <p className="text-yellow-400 text-xs text-center">
-                    ?? Test Mode: Pre-filled with test card data
+                    🧪 Test Mode: Pre-filled with test card data
                   </p>
                 </div>
                 

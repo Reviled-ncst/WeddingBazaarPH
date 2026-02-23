@@ -108,7 +108,7 @@ export function Testimonials() {
                   <div>
                     <h4 className="text-white font-semibold">{testimonial.name}</h4>
                     <p className="text-dark-400 text-sm">
-                      {testimonial.location} • {testimonial.date}
+                      {testimonial.location} â€¢ {testimonial.date}
                     </p>
                   </div>
                 </div>

@@ -234,7 +234,7 @@ export default function SettingsPage() {
                       onChange={(e) => setGeneralSettings(prev => ({ ...prev, currency: e.target.value }))}
                       className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-400/20"
                     >
-                      <option value="PHP">PHP (?)</option>
+                      <option value="PHP">PHP (₱)</option>
                       <option value="USD">USD ($)</option>
                     </select>
                   </div>
@@ -519,7 +519,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">Min Booking Amount (?)</label>
+                    <label className="block text-sm font-medium text-white mb-2">Min Booking Amount (₱)</label>
                     <input
                       type="number"
                       value={paymentSettings.minBookingAmount}

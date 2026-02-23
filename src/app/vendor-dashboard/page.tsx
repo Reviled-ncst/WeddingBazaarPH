@@ -475,7 +475,7 @@ function VendorDashboardContent() {
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">This Month</p>
-                    <p className="text-2xl font-bold text-white">?0</p>
+                    <p className="text-2xl font-bold text-white">₱0</p>
                   </div>
                 </div>
               </Card>
@@ -596,7 +596,7 @@ function VendorDashboardContent() {
                                 </div>
                                 <div className="flex items-center gap-2 text-gray-400">
                                   <CreditCard className="w-4 h-4" />
-                                  ?{Number(booking.total_price).toLocaleString()}
+                                  ₱{Number(booking.total_price).toLocaleString()}
                                   {booking.payment_status === 'paid' && (
                                     <Badge variant="success" className="ml-1 text-xs">Paid</Badge>
                                   )}
@@ -666,7 +666,7 @@ function VendorDashboardContent() {
                                 </div>
                                 <div className="flex items-center gap-2 text-gray-400">
                                   <CreditCard className="w-4 h-4" />
-                                  ?{Number(booking.total_price).toLocaleString()}
+                                  ₱{Number(booking.total_price).toLocaleString()}
                                   {booking.payment_status === 'paid' && (
                                     <Badge variant="success" className="ml-1 text-xs">Paid</Badge>
                                   )}
@@ -722,7 +722,7 @@ function VendorDashboardContent() {
                                 </div>
                                 <div className="flex items-center gap-2 text-gray-500">
                                   <CreditCard className="w-4 h-4" />
-                                  ?{Number(booking.total_price).toLocaleString()}
+                                  ₱{Number(booking.total_price).toLocaleString()}
                                 </div>
                               </div>
                             </div>

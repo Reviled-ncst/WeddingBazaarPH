@@ -113,8 +113,8 @@ export default function AdminDashboard() {
       },
       {
         title: 'Monthly Revenue',
-        value: `?${(stats.monthlyRevenue / 1000).toFixed(0)}K`,
-        change: `?${(stats.totalRevenue / 1000).toFixed(0)}K total`,
+        value: `₱${(stats.monthlyRevenue / 1000).toFixed(0)}K`,
+        change: `₱${(stats.totalRevenue / 1000).toFixed(0)}K total`,
         changeType: 'positive',
         icon: DollarSign,
         color: 'text-emerald-400',

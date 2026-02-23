@@ -208,7 +208,7 @@ function DiscoverContent() {
   const formatPrice = (priceRange: string | null | undefined) => {
     if (!priceRange) return 'Price on request';
     // Replace ??? with PHP peso sign
-    return priceRange.replace(/\?\?\?/g, '?');
+    return priceRange.replace(/\?\?\?/g, '₱');
   };
 
   return (

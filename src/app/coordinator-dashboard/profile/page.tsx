@@ -517,7 +517,7 @@ export default function CoordinatorProfilePage() {
                   name="price_range"
                   value={formData.price_range}
                   onChange={handleInputChange}
-                  placeholder="e.g., ?50,000 - ?300,000"
+                  placeholder="e.g., ₱50,000 - ₱300,000"
                   className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white focus:border-pink-500 focus:outline-none"
                 />
               </div>
@@ -691,7 +691,7 @@ export default function CoordinatorProfilePage() {
                   <p className="text-xs text-dark-500">{value.description}</p>
                   <div className="mt-2 text-sm">
                     <span className={vehicleType === key ? 'text-pink-400' : 'text-dark-400'}>
-                      ?{value.baseFee} + ?{value.perKmRate}/km
+                      ₱{value.baseFee} + ₱{value.perKmRate}/km
                     </span>
                   </div>
                 </button>
@@ -715,7 +715,7 @@ export default function CoordinatorProfilePage() {
               <div className="flex-1 p-4 bg-dark-800/50 rounded-lg border border-dark-700">
                 <p className="text-sm text-dark-400">Computed Rates:</p>
                 <p className="text-lg font-semibold text-white">
-                  ?{computedTravelFees.baseFee} base + ?{computedTravelFees.perKmRate}/km
+                  ₱{computedTravelFees.baseFee} base + ₱{computedTravelFees.perKmRate}/km
                 </p>
               </div>
             </div>

@@ -10,7 +10,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { getToken } from '@/lib/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
 interface MigrationResult {
   status: 'success' | 'skipped' | 'failed' | 'pending';
@@ -289,8 +289,8 @@ export default function MigrationsPage() {
                     <div>
                       <div className="text-white font-medium">{migration.migration}</div>
                       <div className="text-dark-400 text-sm">
-                        Batch {migration.batch} • {new Date(migration.executed_at).toLocaleString()}
-                        {migration.execution_time_ms && ` • ${migration.execution_time_ms}ms`}
+                        Batch {migration.batch} â€¢ {new Date(migration.executed_at).toLocaleString()}
+                        {migration.execution_time_ms && ` â€¢ ${migration.execution_time_ms}ms`}
                       </div>
                     </div>
                   </div>

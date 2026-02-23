@@ -190,11 +190,11 @@ export function EventsTab() {
 
   const getEventTypeBadge = (type: string) => {
     const labels: Record<string, string> = {
-      wedding: '?? Wedding',
-      engagement: '?? Engagement',
-      rehearsal: '?? Rehearsal',
-      meeting: '?? Meeting',
-      other: '?? Other',
+      wedding: '💒 Wedding',
+      engagement: '💍 Engagement',
+      rehearsal: '🎭 Rehearsal',
+      meeting: '📅 Meeting',
+      other: '📋 Other',
     };
     return labels[type] || type;
   };

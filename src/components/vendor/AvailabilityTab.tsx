@@ -19,7 +19,7 @@ interface AvailabilityTabProps {
   vendorId: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',

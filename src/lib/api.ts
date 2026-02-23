@@ -1,6 +1,6 @@
 import { ApiResponse } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
 // Get auth token from localStorage
 function getToken(): string | null {

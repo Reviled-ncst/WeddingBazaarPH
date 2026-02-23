@@ -120,7 +120,7 @@ export function Rating({
             key={i}
             className={i < Math.floor(value) ? 'text-yellow-400' : 'text-dark-600'}
           >
-            ?
+            ★
           </span>
         ))}
       </div>
