@@ -174,6 +174,10 @@ $migrations = [
         'file' => __DIR__ . '/../config/seed_admin_data.sql',
         'description' => 'Admin seed data: support tickets, complaints, login attempts'
     ],
+    'reseed_login_attempts' => [
+        'file' => __DIR__ . '/../config/reseed_login_attempts.sql',
+        'description' => 'Reseed login_attempts with correct status ENUM values'
+    ],
 ];
 
 // Check if specific migration requested

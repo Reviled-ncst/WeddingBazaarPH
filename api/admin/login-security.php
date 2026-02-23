@@ -31,28 +31,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $page = (int)($_GET['page'] ?? 1);
     $limit = (int)($_GET['limit'] ?? 50);
     $offset = ($page - 1) * $limit;
+    $statusFilter = $_GET['status'] ?? null;
+    $search = $_GET['search'] ?? null;
 
     try {
         if ($type === 'attempts') {
+            // Build WHERE conditions
+            $where = [];
+            $params = [];
+            
+            if ($statusFilter && in_array($statusFilter, ['success', 'failed', 'blocked'])) {
+                $where[] = "la.status = ?";
+                $params[] = $statusFilter;
+            }
+            
+            if ($search) {
+                $where[] = "(la.email LIKE ? OR la.ip_address LIKE ? OR u.name LIKE ?)";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+            }
+            
+            $whereClause = count($where) > 0 ? "WHERE " . implode(" AND ", $where) : "";
+            
             $sql = "
-                SELECT la.*, u.name as user_name, u.role as user_role
+                SELECT la.id, la.user_id, la.email, la.ip_address, la.user_agent,
+                       la.status, la.failure_reason, la.created_at,
+                       u.name as user_name, u.role as user_role
                 FROM login_attempts la
                 LEFT JOIN users u ON la.user_id = u.id
+                $whereClause
                 ORDER BY la.created_at DESC
                 LIMIT $limit OFFSET $offset
             ";
-            $stmt = $pdo->query($sql);
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $stmt = $pdo->query("SELECT COUNT(*) as total FROM login_attempts");
+            // Count total for pagination
+            $countSql = "SELECT COUNT(*) as total FROM login_attempts la LEFT JOIN users u ON la.user_id = u.id $whereClause";
+            $stmt = $pdo->prepare($countSql);
+            $stmt->execute($params);
             $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-            // Get stats
-            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE success = 1 AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-            $successfulToday = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+            // Get stats (last 24 hours)
+            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE status = 'success' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+            $successCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
-            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE success = 0 AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-            $failedToday = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE status = 'failed' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+            $failedCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+
+            $stmt = $pdo->query("SELECT COUNT(*) as count FROM login_attempts WHERE status = 'blocked' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)");
+            $blockedCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
             echo json_encode([
                 'success' => true,
@@ -64,8 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     'totalPages' => ceil($total / $limit)
                 ],
                 'stats' => [
-                    'successfulToday' => (int)$successfulToday,
-                    'failedToday' => (int)$failedToday
+                    'success' => (int)$successCount,
+                    'failed' => (int)$failedCount,
+                    'blocked' => (int)$blockedCount
                 ]
             ]);
 
