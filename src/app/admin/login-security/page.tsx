@@ -88,11 +88,14 @@ export default function LoginSecurityPage() {
   const fetchLockouts = useCallback(async () => {
     try {
       const response = await adminApi.getAccountLockouts({ active_only: true }) as any;
-      if (response.success) {
-        setLockouts(response.lockouts);
+      if (response?.success) {
+        setLockouts(response.lockouts || []);
+      } else {
+        setLockouts([]);
       }
     } catch (err) {
       console.error('Failed to fetch lockouts:', err);
+      setLockouts([]);
     }
   }, []);
 
