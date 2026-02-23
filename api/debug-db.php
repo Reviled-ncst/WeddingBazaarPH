@@ -1,12 +1,21 @@
 <?php
 header('Content-Type: application/json');
 
-// Debug database connection
-$mysqlUrl = getenv('MYSQL_URL');
+// Debug database connection - try multiple methods
+$mysqlUrl = getenv('MYSQL_URL') ?: ($_ENV['MYSQL_URL'] ?? ($_SERVER['MYSQL_URL'] ?? null));
+
+// Also check all environment variables containing MYSQL or DB
+$allEnv = [];
+foreach (getenv() as $key => $value) {
+    if (stripos($key, 'MYSQL') !== false || stripos($key, 'DB') !== false || stripos($key, 'RAILWAY') !== false) {
+        $allEnv[$key] = substr($value, 0, 20) . '...';
+    }
+}
 
 $response = [
     'mysql_url_exists' => !empty($mysqlUrl),
     'mysql_url_preview' => $mysqlUrl ? substr($mysqlUrl, 0, 30) . '...' : null,
+    'env_vars_found' => $allEnv,
 ];
 
 if ($mysqlUrl) {
