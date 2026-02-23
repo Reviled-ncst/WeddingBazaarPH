@@ -53,18 +53,16 @@ export default function CategoriesPage() {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await api.get<{ categories: Category[] }>('/admin/categories/list.php');
-        if (response.data?.categories) {
-          // Ensure vendor_count and subcategories exist
-          const categoriesWithDefaults = response.data.categories.map(cat => ({
-            ...cat,
-            vendor_count: cat.vendor_count || 0,
-            subcategories: cat.subcategories || [],
-          }));
-          setCategories(categoriesWithDefaults);
-        } else {
-          setCategories([]);
-        }
+        const response = await api.get<Category[]>('/admin/categories/list.php');
+        // API returns { success, data } where data is the categories array
+        const categoriesData = response.data || [];
+        // Ensure vendor_count and subcategories exist
+        const categoriesWithDefaults = (Array.isArray(categoriesData) ? categoriesData : []).map(cat => ({
+          ...cat,
+          vendor_count: cat.vendor_count || 0,
+          subcategories: cat.subcategories || [],
+        }));
+        setCategories(categoriesWithDefaults);
       } catch (err) {
         console.error('Failed to fetch categories:', err);
         setCategories([]);
