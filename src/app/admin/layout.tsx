@@ -27,7 +27,8 @@ import {
   Image,
   Globe,
   BarChart3,
-  MousePointer
+  MousePointer,
+  Database
 } from 'lucide-react';
 
 const adminNavItems = [
@@ -48,6 +49,7 @@ const adminNavItems = [
   { name: 'Pages', href: '/admin/cms/pages', icon: FileText },
   { name: 'Landing Page', href: '/admin/cms/landing', icon: Layout },
   { name: 'Media', href: '/admin/cms/media', icon: Image },
+  { name: 'Migrations', href: '/admin/migrations', icon: Database },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
