@@ -40,12 +40,12 @@ CREATE TABLE IF NOT EXISTS `content_pages` (
 
 -- Landing Page Sections (hero, features, testimonials, etc)
 CREATE TABLE IF NOT EXISTS `landing_sections` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id` int NOT NULL AUTO_INCREMENT,
   `section_key` varchar(100) NOT NULL UNIQUE,
   `section_type` enum('hero', 'features', 'testimonials', 'cta', 'stats', 'steps', 'faq', 'custom') DEFAULT 'custom',
   `title` varchar(255) DEFAULT NULL,
   `subtitle` text DEFAULT NULL,
-  `content` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`content`)),
+  `content` JSON DEFAULT NULL,
   `background_image` varchar(500) DEFAULT NULL,
   `background_color` varchar(20) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
