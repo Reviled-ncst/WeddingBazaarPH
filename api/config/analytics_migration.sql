@@ -1,5 +1,6 @@
 -- Analytics Migration
 -- Tracks page views, clicks, and user interactions for heatmaps
+-- No foreign keys for standalone deployment
 
 -- Page Views tracking
 CREATE TABLE IF NOT EXISTS page_views (
@@ -25,10 +26,9 @@ CREATE TABLE IF NOT EXISTS page_views (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_session (session_id),
     INDEX idx_user (user_id),
-    INDEX idx_page (page_path),
+    INDEX idx_page (page_path(191)),
     INDEX idx_created (created_at),
-    INDEX idx_device (device_type),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    INDEX idx_device (device_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Click/Interaction tracking for heatmaps
@@ -50,9 +50,8 @@ CREATE TABLE IF NOT EXISTS click_events (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_session (session_id),
     INDEX idx_page_view (page_view_id),
-    INDEX idx_page (page_path),
-    INDEX idx_created (created_at),
-    FOREIGN KEY (page_view_id) REFERENCES page_views(id) ON DELETE CASCADE
+    INDEX idx_page (page_path(191)),
+    INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Scroll depth tracking
@@ -68,8 +67,7 @@ CREATE TABLE IF NOT EXISTS scroll_events (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_session (session_id),
     INDEX idx_page_view (page_view_id),
-    INDEX idx_page (page_path),
-    FOREIGN KEY (page_view_id) REFERENCES page_views(id) ON DELETE CASCADE
+    INDEX idx_page (page_path(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Custom event tracking
@@ -88,8 +86,7 @@ CREATE TABLE IF NOT EXISTS custom_events (
     INDEX idx_user (user_id),
     INDEX idx_event_name (event_name),
     INDEX idx_category (event_category),
-    INDEX idx_created (created_at),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- User sessions
@@ -117,8 +114,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     INDEX idx_session (session_id),
     INDEX idx_user (user_id),
     INDEX idx_started (started_at),
-    INDEX idx_bounce (is_bounce),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    INDEX idx_bounce (is_bounce)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Daily aggregated stats (for faster dashboard queries)
