@@ -71,14 +71,21 @@ export default function UsersPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response.success) {
-        setUsers(response.users);
-        setTotalPages(response.pagination.totalPages);
-        setTotal(response.pagination.total);
-        setStats(response.stats);
+      if (response?.success) {
+        setUsers(response.users || []);
+        setTotalPages(response.pagination?.totalPages || 1);
+        setTotal(response.pagination?.total || 0);
+        setStats(response.stats || { byRole: {}, byStatus: {} });
+      } else {
+        setUsers([]);
+        setTotalPages(1);
+        setTotal(0);
       }
     } catch (err) {
       console.error('Failed to fetch users:', err);
+      setUsers([]);
+      setTotalPages(1);
+      setTotal(0);
     } finally {
       setIsLoading(false);
     }

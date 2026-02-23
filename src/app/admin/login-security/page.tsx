@@ -68,13 +68,18 @@ export default function LoginSecurityPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response.success) {
-        setAttempts(response.attempts);
-        setTotalPages(response.pagination.totalPages);
-        setStats(response.stats);
+      if (response?.success) {
+        setAttempts(response.attempts || []);
+        setTotalPages(response.pagination?.totalPages || 1);
+        setStats(response.stats || { success: 0, failed: 0, blocked: 0 });
+      } else {
+        setAttempts([]);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error('Failed to fetch login attempts:', err);
+      setAttempts([]);
+      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }

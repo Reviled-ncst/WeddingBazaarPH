@@ -62,9 +62,12 @@ export default function CategoriesPage() {
             subcategories: cat.subcategories || [],
           }));
           setCategories(categoriesWithDefaults);
+        } else {
+          setCategories([]);
         }
       } catch (err) {
         console.error('Failed to fetch categories:', err);
+        setCategories([]);
       } finally {
         setLoading(false);
       }

@@ -70,13 +70,18 @@ export default function SupportTicketsPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response.success) {
-        setTickets(response.tickets);
-        setTotalPages(response.pagination.totalPages);
-        setStats(response.stats);
+      if (response?.success) {
+        setTickets(response.tickets || []);
+        setTotalPages(response.pagination?.totalPages || 1);
+        setStats(response.stats || { byStatus: {} });
+      } else {
+        setTickets([]);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error('Failed to fetch tickets:', err);
+      setTickets([]);
+      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }

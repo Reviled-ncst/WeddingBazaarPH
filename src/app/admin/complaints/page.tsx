@@ -75,13 +75,18 @@ export default function ComplaintsPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response.success) {
-        setComplaints(response.complaints);
-        setTotalPages(response.pagination.totalPages);
-        setStats(response.stats);
+      if (response?.success) {
+        setComplaints(response.complaints || []);
+        setTotalPages(response.pagination?.totalPages || 1);
+        setStats(response.stats || { byStatus: {}, byPriority: {} });
+      } else {
+        setComplaints([]);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error('Failed to fetch complaints:', err);
+      setComplaints([]);
+      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }

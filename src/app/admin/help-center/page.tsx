@@ -53,12 +53,15 @@ export default function HelpCenterPage() {
         category: categoryFilter !== 'all' ? categoryFilter : undefined,
         search: searchTerm || undefined
       }) as any;
-      if (response.success) {
-        setArticles(response.articles);
-        setStats(response.stats);
+      if (response?.success) {
+        setArticles(response.articles || []);
+        setStats(response.stats || { published: 0, drafts: 0, totalViews: 0 });
+      } else {
+        setArticles([]);
       }
     } catch (err) {
       console.error('Failed to fetch articles:', err);
+      setArticles([]);
     } finally {
       setIsLoading(false);
     }

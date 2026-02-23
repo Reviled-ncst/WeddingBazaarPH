@@ -67,14 +67,19 @@ export default function LocationLogsPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response.success) {
-        setLogs(response.logs);
-        setTotalPages(response.pagination.totalPages);
-        setStats(response.stats);
+      if (response?.success) {
+        setLogs(response.logs || []);
+        setTotalPages(response.pagination?.totalPages || 1);
+        setStats(response.stats || { totalLogs: 0, uniqueCities: 0, topRegions: [] });
         setRegions(response.regions || []);
+      } else {
+        setLogs([]);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error('Failed to fetch logs:', err);
+      setLogs([]);
+      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }

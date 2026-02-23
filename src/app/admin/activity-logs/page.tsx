@@ -74,16 +74,22 @@ export default function ActivityLogsPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response.success) {
-        setLogs(response.logs);
-        setTotalPages(response.pagination.totalPages);
-        setTotal(response.pagination.total);
+      if (response?.success) {
+        setLogs(response.logs || []);
+        setTotalPages(response.pagination?.totalPages || 1);
+        setTotal(response.pagination?.total || 0);
         if (response.filters?.actionTypes) {
           setActionTypes(response.filters.actionTypes);
         }
+      } else {
+        setLogs([]);
+        setTotalPages(1);
+        setTotal(0);
       }
     } catch (err) {
       console.error('Failed to fetch logs:', err);
+      setLogs([]);
+      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }
