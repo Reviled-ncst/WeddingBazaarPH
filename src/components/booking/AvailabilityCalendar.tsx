@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface DayAvailability {
   date: string;
   status: 'available' | 'partial' | 'full' | 'blocked' | 'past';
@@ -52,7 +54,7 @@ export function AvailabilityCalendar({
   const fetchMonthData = async () => {
     setLoading(true);
     try {
-      let url = `http://localhost/wedding-bazaar-api/availability/month.php?vendor_id=${vendorId}&year=${currentYear}&month=${currentMonth}`;
+      let url = `${API_URL}/availability/month.php?vendor_id=${vendorId}&year=${currentYear}&month=${currentMonth}`;
       if (serviceId) {
         url += `&service_id=${serviceId}`;
       }

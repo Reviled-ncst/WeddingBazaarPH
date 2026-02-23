@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
 
 export function Hero() {
   const [stats, setStats] = useState({ happyCouples: 1000 });

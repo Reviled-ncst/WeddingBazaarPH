@@ -192,7 +192,7 @@ export function ServiceDetailsModal({ isOpen, onClose, service }: ServiceDetails
                       <div className="flex items-center gap-2">
                         <span className="text-gray-300">{item.description}</span>
                         {item.quantity > 1 && (
-                          <span className="text-gray-500">Ã— {item.quantity}</span>
+                          <span className="text-gray-500">× {item.quantity}</span>
                         )}
                       </div>
                       <span className="text-white font-medium">

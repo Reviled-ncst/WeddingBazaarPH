@@ -36,7 +36,7 @@ export function Footer() {
   const facebook = getSetting('social', 'facebook', 'https://facebook.com');
   const instagram = getSetting('social', 'instagram', 'https://instagram.com');
   const twitter = getSetting('social', 'twitter', 'https://twitter.com');
-  const copyrightText = getSetting('footer', 'copyright_text', 'Â© 2026 WeddingBazaar. All rights reserved.');
+  const copyrightText = getSetting('footer', 'copyright_text', '© 2026 WeddingBazaar. All rights reserved.');
   
   return (
     <footer className="bg-dark-950 text-white border-t border-dark-800">

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { X, Star, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface ReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -44,7 +46,7 @@ export function ReviewModal({
     setError('');
 
     try {
-      const response = await fetch('http://localhost/wedding-bazaar-api/reviews/create.php', {
+      const response = await fetch(`${API_URL}/reviews/create.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

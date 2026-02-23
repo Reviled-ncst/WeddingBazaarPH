@@ -11,6 +11,8 @@ import { Button, Badge, Card } from '@/components/ui';
 import { PaymentModal } from '@/components/booking/PaymentModal';
 import { ReviewModal } from '@/components/booking/ReviewModal';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface Booking {
   id: number;
   service_id: number;
@@ -63,7 +65,7 @@ export default function MyBookingsPage() {
 
   const fetchBookings = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost/wedding-bazaar-api/bookings/list.php?user_id=${id}`);
+      const response = await fetch(`${API_URL}/bookings/list.php?user_id=${id}`);
       const result = await response.json();
       if (result.success) {
         setBookings(result.data);
@@ -97,7 +99,7 @@ export default function MyBookingsPage() {
     if (!confirm('Are you sure you want to cancel this booking?')) return;
 
     try {
-      const response = await fetch('http://localhost/wedding-bazaar-api/bookings/update-status.php', {
+      const response = await fetch(`${API_URL}/bookings/update-status.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface Conversation {
   user_id: number;
   user_name: string;
@@ -75,7 +77,7 @@ function MessagesPageContent() {
 
   const fetchConversations = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost/wedding-bazaar-api/messages/conversations.php?user_id=${id}`);
+      const response = await fetch(`${API_URL}/messages/conversations.php?user_id=${id}`);
       const result = await response.json();
       if (result.success) {
         setConversations(result.data);
@@ -92,7 +94,7 @@ function MessagesPageContent() {
     
     try {
       const response = await fetch(
-        `http://localhost/wedding-bazaar-api/messages/list.php?user_id=${userId}&other_user_id=${otherUserId}`
+        `${API_URL}/messages/list.php?user_id=${userId}&other_user_id=${otherUserId}`
       );
       const result = await response.json();
       if (result.success) {
@@ -118,7 +120,7 @@ function MessagesPageContent() {
 
     setSending(true);
     try {
-      const response = await fetch('http://localhost/wedding-bazaar-api/messages/send.php', {
+      const response = await fetch(`${API_URL}/messages/send.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

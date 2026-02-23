@@ -307,7 +307,7 @@ export function VerificationModal({
                     <div className="grid grid-cols-2 gap-2">
                       {existingDocuments.map((doc, idx) => (
                         <div key={idx} className="text-xs text-dark-500 truncate">
-                          📄 {doc.name}
+                          ?? {doc.name}
                         </div>
                       ))}
                     </div>
@@ -341,7 +341,7 @@ export function VerificationModal({
                   className="flex items-center gap-2 text-xs text-dark-400 p-2 bg-dark-800/50 rounded-lg"
                 >
                   <span className={doc.required ? 'text-pink-400' : 'text-dark-500'}>
-                    {doc.required ? '•' : '○'}
+                    {doc.required ? '�' : '?'}
                   </span>
                   {doc.name}
                 </div>
@@ -439,7 +439,7 @@ export function VerificationModal({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{doc.name}</p>
                     <p className="text-xs text-dark-500">
-                      {formatFileSize(doc.size)} • {new Date(doc.uploadedAt).toLocaleDateString()}
+                      {formatFileSize(doc.size)} � {new Date(doc.uploadedAt).toLocaleDateString()}
                     </p>
                   </div>
 

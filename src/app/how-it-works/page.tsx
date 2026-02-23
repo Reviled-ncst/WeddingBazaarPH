@@ -114,7 +114,7 @@ export default function HowItWorksPage() {
         <div className="text-center mt-16">
           <p className="text-dark-300 mb-4">Have questions?</p>
           <Link href="/help" className="text-pink-400 hover:underline">
-            Check our Help Center →
+            Check our Help Center ?
           </Link>
         </div>
       </div>

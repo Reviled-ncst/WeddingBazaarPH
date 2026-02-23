@@ -59,7 +59,7 @@ const defaultSettings: SiteSettings = {
     tagline: 'Your Perfect Wedding, One Click Away'
   },
   footer: {
-    copyright_text: 'Â© 2024 Wedding Bazaar PH. All rights reserved.'
+    copyright_text: '© 2024 Wedding Bazaar PH. All rights reserved.'
   }
 };
 

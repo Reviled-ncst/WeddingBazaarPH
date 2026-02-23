@@ -11,6 +11,8 @@ import { LocationPicker } from '@/components/ui/LocationPicker';
 import { AvailabilityCalendar } from './AvailabilityCalendar';
 import { PaymentModal } from './PaymentModal';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface Service {
   id: number;
   name: string;
@@ -148,7 +150,7 @@ export function BookingModal({
     setCheckingDate(true);
     try {
       const response = await fetch(
-        `http://localhost/wedding-bazaar-api/availability/check.php?vendor_id=${vendorId}&service_id=${service.id}&date=${date}`
+        `${API_URL}/availability/check.php?vendor_id=${vendorId}&service_id=${service.id}&date=${date}`
       );
       const result = await response.json();
       if (result.success) {
@@ -245,7 +247,7 @@ export function BookingModal({
         return 'Other';
       };
       
-      const response = await fetch('http://localhost/wedding-bazaar-api/bookings/create.php', {
+      const response = await fetch(`${API_URL}/bookings/create.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -488,7 +490,7 @@ export function BookingModal({
                               </div>
                               {vendorTravelInfo?.free_km_radius && vendorTravelInfo.free_km_radius > 0 && (
                                 <p className="text-gray-500 text-xs mt-2">
-                                  Free within {vendorTravelInfo.free_km_radius}km • Base: ₱{vendorTravelInfo.base_travel_fee} • ₱{vendorTravelInfo.per_km_rate}/km after
+                                  Free within {vendorTravelInfo.free_km_radius}km � Base: ?{vendorTravelInfo.base_travel_fee} � ?{vendorTravelInfo.per_km_rate}/km after
                                 </p>
                               )}
                             </div>
@@ -629,7 +631,7 @@ export function BookingModal({
               >
                 {isSubmitting ? (
                   <>
-                    <span className="animate-spin mr-2">⏳</span>
+                    <span className="animate-spin mr-2">?</span>
                     Creating Booking...
                   </>
                 ) : !userId ? (

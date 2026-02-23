@@ -44,7 +44,7 @@ export function getRatingStars(rating: number): string {
   const hasHalfStar = rating % 1 >= 0.5;
   const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
   
-  return '★'.repeat(fullStars) + (hasHalfStar ? '½' : '') + '☆'.repeat(emptyStars);
+  return '?'.repeat(fullStars) + (hasHalfStar ? '�' : '') + '?'.repeat(emptyStars);
 }
 
 // Capitalize first letter

@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Mail, Phone, MapPin, Send, Clock } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
 
 interface ContactSettings {
   email: string;

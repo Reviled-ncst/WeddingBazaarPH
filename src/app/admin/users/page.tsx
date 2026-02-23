@@ -150,7 +150,7 @@ export default function UsersPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">User Management</h1>
           <p className="text-dark-400 mt-1">
-            {total} users total â€¢ {stats.byRole?.vendor || 0} vendors â€¢ {stats.byRole?.coordinator || 0} coordinators
+            {total} users total • {stats.byRole?.vendor || 0} vendors • {stats.byRole?.coordinator || 0} coordinators
           </p>
         </div>
         <div className="flex gap-3">

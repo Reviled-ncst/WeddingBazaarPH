@@ -31,7 +31,7 @@ interface MessagesTabProps {
   userId: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '${API_URL}';
 
 export function MessagesTab({ userId }: MessagesTabProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);

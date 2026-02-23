@@ -13,6 +13,8 @@ import { ServiceDetailsModal } from '@/components/vendor/ServiceDetailsModal';
 import { MessagesTab } from '@/components/messaging/MessagesTab';
 import { AvailabilityTab } from '@/components/vendor/AvailabilityTab';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface Service {
   id: number;
   name: string;
@@ -100,7 +102,7 @@ function VendorDashboardContent() {
       
       try {
         // Get vendor ID from vendor profile
-        const vendorRes = await fetch(`http://localhost/wedding-bazaar-api/vendors/profile.php?user_id=${user.id}`);
+        const vendorRes = await fetch(`${API_URL}/vendors/profile.php?user_id=${user.id}`);
         if (vendorRes.ok) {
           const vendorData = await vendorRes.json();
           if (vendorData.vendor) {
@@ -108,7 +110,7 @@ function VendorDashboardContent() {
             setVendorCategory(vendorData.vendor.category || '');
             setVerificationStatus(vendorData.vendor.verification_status || 'unverified');
             // Fetch services for this vendor
-            const servicesRes = await fetch(`http://localhost/wedding-bazaar-api/services/list.php?vendor_id=${vendorData.vendor.id}`);
+            const servicesRes = await fetch(`${API_URL}/services/list.php?vendor_id=${vendorData.vendor.id}`);
             if (servicesRes.ok) {
               const servicesData = await servicesRes.json();
               setServices(servicesData.services || []);
@@ -131,7 +133,7 @@ function VendorDashboardContent() {
       if (!vendorId) return;
       setBookingsLoading(true);
       try {
-        const response = await fetch(`http://localhost/wedding-bazaar-api/bookings/list.php?vendor_id=${vendorId}`);
+        const response = await fetch(`${API_URL}/bookings/list.php?vendor_id=${vendorId}`);
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
@@ -175,7 +177,7 @@ function VendorDashboardContent() {
     setConfirmDialog(prev => ({ ...prev, isLoading: true }));
     
     try {
-      const response = await fetch('http://localhost/wedding-bazaar-api/bookings/update-status.php', {
+      const response = await fetch(`${API_URL}/bookings/update-status.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -208,7 +210,7 @@ function VendorDashboardContent() {
   // Update booking status (deprecated - use dialog instead)
   const updateBookingStatus = async (bookingId: number, newStatus: string) => {
     try {
-      const response = await fetch('http://localhost/wedding-bazaar-api/bookings/update-status.php', {
+      const response = await fetch(`${API_URL}/bookings/update-status.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -261,8 +263,8 @@ function VendorDashboardContent() {
       };
       
       const endpoint = isEditing 
-        ? 'http://localhost/wedding-bazaar-api/services/update.php'
-        : 'http://localhost/wedding-bazaar-api/services/create.php';
+        ? `${API_URL}/services/update.php`
+        : `${API_URL}/services/create.php`;
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -286,7 +288,7 @@ function VendorDashboardContent() {
             }
           });
           
-          const uploadResponse = await fetch('http://localhost/wedding-bazaar-api/services/upload-images.php', {
+          const uploadResponse = await fetch(`${API_URL}/services/upload-images.php`, {
             method: 'POST',
             body: formData,
           });
@@ -340,7 +342,7 @@ function VendorDashboardContent() {
   const handleToggleService = async (serviceId: number) => {
     if (!vendorId) return;
     try {
-      const response = await fetch('http://localhost/wedding-bazaar-api/services/toggle.php', {
+      const response = await fetch(`${API_URL}/services/toggle.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: serviceId, vendor_id: vendorId }),
@@ -362,7 +364,7 @@ function VendorDashboardContent() {
     if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) return;
     
     try {
-      const response = await fetch('http://localhost/wedding-bazaar-api/services/delete.php', {
+      const response = await fetch(`${API_URL}/services/delete.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: serviceId, vendor_id: vendorId }),
@@ -473,7 +475,7 @@ function VendorDashboardContent() {
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">This Month</p>
-                    <p className="text-2xl font-bold text-white">₱0</p>
+                    <p className="text-2xl font-bold text-white">?0</p>
                   </div>
                 </div>
               </Card>
@@ -594,7 +596,7 @@ function VendorDashboardContent() {
                                 </div>
                                 <div className="flex items-center gap-2 text-gray-400">
                                   <CreditCard className="w-4 h-4" />
-                                  ₱{Number(booking.total_price).toLocaleString()}
+                                  ?{Number(booking.total_price).toLocaleString()}
                                   {booking.payment_status === 'paid' && (
                                     <Badge variant="success" className="ml-1 text-xs">Paid</Badge>
                                   )}
@@ -664,7 +666,7 @@ function VendorDashboardContent() {
                                 </div>
                                 <div className="flex items-center gap-2 text-gray-400">
                                   <CreditCard className="w-4 h-4" />
-                                  ₱{Number(booking.total_price).toLocaleString()}
+                                  ?{Number(booking.total_price).toLocaleString()}
                                   {booking.payment_status === 'paid' && (
                                     <Badge variant="success" className="ml-1 text-xs">Paid</Badge>
                                   )}
@@ -720,7 +722,7 @@ function VendorDashboardContent() {
                                 </div>
                                 <div className="flex items-center gap-2 text-gray-500">
                                   <CreditCard className="w-4 h-4" />
-                                  ₱{Number(booking.total_price).toLocaleString()}
+                                  ?{Number(booking.total_price).toLocaleString()}
                                 </div>
                               </div>
                             </div>

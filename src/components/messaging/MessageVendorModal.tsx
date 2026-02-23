@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { X, Send, Check, AlertCircle, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface Service {
   id: number;
   name: string;
@@ -57,7 +59,7 @@ export function MessageVendorModal({
         ? `[Inquiry about: ${service.name}]\n\n${message.trim()}`
         : message.trim();
 
-      const response = await fetch('http://localhost/wedding-bazaar-api/messages/send.php', {
+      const response = await fetch(`${API_URL}/messages/send.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -184,7 +186,7 @@ export function MessageVendorModal({
               >
                 {isSubmitting ? (
                   <>
-                    <span className="animate-spin mr-2">⏳</span>
+                    <span className="animate-spin mr-2">?</span>
                     Sending...
                   </>
                 ) : !userId ? (

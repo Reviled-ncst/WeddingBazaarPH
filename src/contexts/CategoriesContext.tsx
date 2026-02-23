@@ -3,6 +3,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { LucideIcon, Camera, Video, MapPin, UtensilsCrossed, Palette, Flower2, Sparkles, Music, Cake, CalendarHeart, Shirt, Car, Gem, Users, Gift, BookOpen, Church, Plane, Scissors } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 export interface Subcategory {
   id: number;
   category_id: number;
@@ -83,7 +85,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
-      const response = await fetch('http://localhost/wedding-bazaar-api/categories/list.php');
+      const response = await fetch(`${API_URL}/categories/list.php`);
       const data = await response.json();
       
       if (data.success && data.data && data.data.length > 0) {

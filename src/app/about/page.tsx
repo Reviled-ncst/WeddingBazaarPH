@@ -65,7 +65,7 @@ export default function AboutPage() {
           <p className="text-dark-300 leading-relaxed">
             We believe every couple deserves access to quality wedding services, regardless of their budget 
             or location. Our platform brings together photographers, venues, caterers, coordinators, and 
-            more – all in one place.
+            more � all in one place.
           </p>
         </Card>
 
@@ -104,19 +104,19 @@ export default function AboutPage() {
           <h2 className="text-2xl font-semibold text-white mb-4">Why Choose Us?</h2>
           <ul className="space-y-4 text-dark-300">
             <li className="flex items-start gap-3">
-              <span className="text-pink-400 font-bold">✓</span>
+              <span className="text-pink-400 font-bold">?</span>
               <span><strong className="text-white">Verified Vendors:</strong> Every vendor goes through our verification process</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-pink-400 font-bold">✓</span>
+              <span className="text-pink-400 font-bold">?</span>
               <span><strong className="text-white">Secure Payments:</strong> Book and pay safely through our platform</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-pink-400 font-bold">✓</span>
+              <span className="text-pink-400 font-bold">?</span>
               <span><strong className="text-white">Real Reviews:</strong> Read honest feedback from real couples</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="text-pink-400 font-bold">✓</span>
+              <span className="text-pink-400 font-bold">?</span>
               <span><strong className="text-white">Dedicated Support:</strong> Our team is here to help you every step of the way</span>
             </li>
           </ul>

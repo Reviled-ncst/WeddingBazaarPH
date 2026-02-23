@@ -1176,7 +1176,7 @@ export function AddServiceModal({ isOpen, onClose, onSave, vendorCategory, editS
                         </div>
                         {/* Rate */}
                         <div className="col-span-2">
-                          <label className="block text-xs text-gray-500 mb-1">Rate (₱)</label>
+                          <label className="block text-xs text-gray-500 mb-1">Rate (?)</label>
                           <input
                             type="number"
                             value={item.rate || ''}
@@ -1245,7 +1245,7 @@ export function AddServiceModal({ isOpen, onClose, onSave, vendorCategory, editS
                         onClick={() => addAddOn(suggestion)}
                         className="px-3 py-1.5 text-sm bg-dark-700 hover:bg-dark-600 text-white rounded-lg transition-colors"
                       >
-                        + {suggestion.name} {suggestion.suggestedPrice && `(₱${suggestion.suggestedPrice.toLocaleString()})`}
+                        + {suggestion.name} {suggestion.suggestedPrice && `(?${suggestion.suggestedPrice.toLocaleString()})`}
                       </button>
                     ))}
                   </div>
@@ -1267,7 +1267,7 @@ export function AddServiceModal({ isOpen, onClose, onSave, vendorCategory, editS
                       />
                     </div>
                     <div className="w-32">
-                      <label className="block text-xs text-gray-500 mb-1">Price (₱)</label>
+                      <label className="block text-xs text-gray-500 mb-1">Price (?)</label>
                       <input
                         type="number"
                         value={addon.price || ''}

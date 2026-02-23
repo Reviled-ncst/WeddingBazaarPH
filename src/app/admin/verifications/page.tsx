@@ -21,6 +21,8 @@ import {
   MessageSquare
 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface VerificationRequest {
   id: number;
   user_id: number;
@@ -58,7 +60,7 @@ export default function VerificationsPage() {
     const fetchVerifications = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch('http://localhost/wedding-bazaar-api/admin/verifications.php');
+        const res = await fetch(`${API_URL}/admin/verifications.php`);
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.verifications) {
@@ -139,7 +141,7 @@ export default function VerificationsPage() {
     if (!selectedVerification) return;
     setIsProcessing(true);
     try {
-      const res = await fetch('http://localhost/wedding-bazaar-api/admin/update-verification.php', {
+      const res = await fetch(`${API_URL}/admin/update-verification.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -178,7 +180,7 @@ export default function VerificationsPage() {
     }
     setIsProcessing(true);
     try {
-      const res = await fetch('http://localhost/wedding-bazaar-api/admin/update-verification.php', {
+      const res = await fetch(`${API_URL}/admin/update-verification.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

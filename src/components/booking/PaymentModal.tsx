@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -137,7 +139,7 @@ export function PaymentModal({
     const pollInterval = setInterval(async () => {
       try {
         const response = await fetch(
-          `http://localhost/wedding-bazaar-api/payments/status.php?booking_id=${bookingId}`
+          `${API_URL}/payments/status.php?booking_id=${bookingId}`
         );
         const result = await response.json();
 
@@ -200,7 +202,7 @@ export function PaymentModal({
 
       try {
         const response = await fetch(
-          'http://localhost/wedding-bazaar-api/payments/create-source.php',
+          `${API_URL}/payments/create-source.php`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -250,7 +252,7 @@ export function PaymentModal({
       
       // Update booking payment status
       const response = await fetch(
-        'http://localhost/wedding-bazaar-api/payments/confirm-card.php',
+        `${API_URL}/payments/confirm-card.php`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -305,7 +307,7 @@ export function PaymentModal({
     setIsLoading(true);
     try {
       const response = await fetch(
-        `http://localhost/wedding-bazaar-api/payments/status.php?booking_id=${bookingId}`
+        `${API_URL}/payments/status.php?booking_id=${bookingId}`
       );
       const result = await response.json();
 
@@ -604,7 +606,7 @@ export function PaymentModal({
                 
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4">
                   <p className="text-yellow-400 text-xs text-center">
-                    🧪 Test Mode: Pre-filled with test card data
+                    ?? Test Mode: Pre-filled with test card data
                   </p>
                 </div>
                 

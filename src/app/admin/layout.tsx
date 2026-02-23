@@ -93,7 +93,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="h-16 flex items-center justify-between px-4 border-b border-dark-800">
           {sidebarOpen && (
             <Link href="/admin" className="flex items-center gap-2">
-              <span className="text-pink-400 text-xl">💒</span>
+              <span className="text-pink-400 text-xl">??</span>
               <span className="font-bold text-white">Admin Panel</span>
             </Link>
           )}
@@ -136,7 +136,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <aside className="fixed inset-y-0 left-0 w-64 bg-dark-900 border-r border-dark-800 z-50">
             <div className="h-16 flex items-center justify-between px-4 border-b border-dark-800">
               <Link href="/admin" className="flex items-center gap-2">
-                <span className="text-pink-400 text-xl">💒</span>
+                <span className="text-pink-400 text-xl">??</span>
                 <span className="font-bold text-white">Admin Panel</span>
               </Link>
               <button

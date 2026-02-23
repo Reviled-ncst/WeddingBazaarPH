@@ -25,6 +25,8 @@ import {
   Loader2
 } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
+
 // Cavite standard per-km pricing matrix based on vehicle type
 const TRAVEL_PRICING_MATRIX: Record<string, { baseFee: number; perKmRate: number; label: string; description: string }> = {
   motorcycle: {
@@ -158,7 +160,7 @@ export default function VendorProfilePage() {
       if (!user) return;
       
       try {
-        const res = await fetch(`http://localhost/wedding-bazaar-api/vendors/profile.php?user_id=${user.id}`);
+        const res = await fetch(`${API_URL}/vendors/profile.php?user_id=${user.id}`);
         if (res.ok) {
           const data = await res.json();
           if (data.vendor) {
@@ -246,40 +248,40 @@ export default function VendorProfilePage() {
     
     if (!formData.business_name.trim()) {
       errors.business_name = 'Business name is required';
-      console.log('❌ Business name missing');
+      console.log('? Business name missing');
     } else {
-      console.log('✓ Business name:', formData.business_name);
+      console.log('? Business name:', formData.business_name);
     }
     
     if (!formData.description.trim()) {
       errors.description = 'Description is required';
-      console.log('❌ Description missing');
+      console.log('? Description missing');
     } else if (formData.description.trim().length < 50) {
       errors.description = `Description should be at least 50 characters (currently ${formData.description.trim().length})`;
-      console.log('❌ Description too short:', formData.description.length, 'chars');
+      console.log('? Description too short:', formData.description.length, 'chars');
     } else {
-      console.log('✓ Description:', formData.description.length, 'chars');
+      console.log('? Description:', formData.description.length, 'chars');
     }
     
     if (!formData.city.trim()) {
       errors.city = 'City is required';
-      console.log('❌ City missing');
+      console.log('? City missing');
     } else {
-      console.log('✓ City:', formData.city);
+      console.log('? City:', formData.city);
     }
     
     if (!formData.province.trim()) {
       errors.province = 'Province is required';
-      console.log('❌ Province missing');
+      console.log('? Province missing');
     } else {
-      console.log('✓ Province:', formData.province);
+      console.log('? Province:', formData.province);
     }
     
     if (!location.latitude || !location.longitude) {
       errors.location = 'Please set your business location on the map';
-      console.log('❌ Location not set - lat:', location.latitude, 'lng:', location.longitude);
+      console.log('? Location not set - lat:', location.latitude, 'lng:', location.longitude);
     } else {
-      console.log('✓ Location:', location.latitude, location.longitude);
+      console.log('? Location:', location.latitude, location.longitude);
     }
     
     console.log('Validation errors:', errors);
@@ -315,7 +317,7 @@ export default function VendorProfilePage() {
     console.log('Profile:', profile);
     
     if (!profile) {
-      console.log('❌ No profile loaded');
+      console.log('? No profile loaded');
       return;
     }
     
@@ -341,7 +343,7 @@ export default function VendorProfilePage() {
     }
     
     if (Object.keys(errors).length > 0) {
-      console.log('❌ Validation failed:', errors);
+      console.log('? Validation failed:', errors);
       setValidationErrors(errors);
       
       // Trigger shake animation
@@ -350,7 +352,7 @@ export default function VendorProfilePage() {
       
       // Show toast with list of missing fields
       const errorCount = Object.keys(errors).length;
-      const errorList = Object.values(errors).slice(0, 3).join(' • ');
+      const errorList = Object.values(errors).slice(0, 3).join(' � ');
       setSaveMessage({ 
         type: 'error', 
         text: `${errorCount} error${errorCount > 1 ? 's' : ''}: ${errorList}` 
@@ -379,7 +381,7 @@ export default function VendorProfilePage() {
       return;
     }
     
-    console.log('✓ Validation passed, saving...');
+    console.log('? Validation passed, saving...');
     setIsSaving(true);
     setValidationErrors({});
     
@@ -401,7 +403,7 @@ export default function VendorProfilePage() {
         free_km_radius: parseInt(formData.free_km_radius) || 10,
       };
 
-      const res = await fetch('http://localhost/wedding-bazaar-api/vendors/update-profile.php', {
+      const res = await fetch(`${API_URL}/vendors/update-profile.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),
@@ -409,17 +411,17 @@ export default function VendorProfilePage() {
 
       if (res.ok) {
         const data = await res.json();
-        console.log('✓ Profile saved successfully:', data);
+        console.log('? Profile saved successfully:', data);
         setProfile(prev => prev ? { ...prev, ...data.vendor } : null);
         setSaveMessage({ type: 'success', text: 'Profile saved successfully!' });
         setTimeout(() => setSaveMessage(null), 5000);
       } else {
         const errorText = await res.text();
-        console.error('❌ Save failed:', res.status, errorText);
+        console.error('? Save failed:', res.status, errorText);
         throw new Error('Failed to save');
       }
     } catch (error) {
-      console.error('❌ Error saving profile:', error);
+      console.error('? Error saving profile:', error);
       setSaveMessage({ type: 'error', text: 'Failed to save profile. Please try again.' });
       setTimeout(() => setSaveMessage(null), 5000);
     } finally {
@@ -433,18 +435,18 @@ export default function VendorProfilePage() {
     console.log('Profile:', profile);
     
     if (!profile) {
-      console.log('❌ No profile');
+      console.log('? No profile');
       return;
     }
     
     if (!location.latitude || !location.longitude) {
-      console.log('❌ Location not set');
+      console.log('? Location not set');
       throw new Error('Please set your business location first');
     }
 
     console.log('Submitting verification for vendor:', profile.id);
     
-    const res = await fetch('http://localhost/wedding-bazaar-api/vendors/submit-verification.php', {
+    const res = await fetch(`${API_URL}/vendors/submit-verification.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -455,13 +457,13 @@ export default function VendorProfilePage() {
 
     if (res.ok) {
       const data = await res.json();
-      console.log('✓ Verification submitted:', data);
+      console.log('? Verification submitted:', data);
       setProfile(prev => prev ? { ...prev, verification_status: 'pending' } : null);
       setVerificationDocs(documents);
       setShowVerificationModal(false);
     } else {
       const errorText = await res.text();
-      console.error('❌ Verification submit failed:', res.status, errorText);
+      console.error('? Verification submit failed:', res.status, errorText);
       throw new Error('Failed to submit verification');
     }
   };
@@ -669,7 +671,7 @@ export default function VendorProfilePage() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {verificationDocs.map((doc, idx) => (
                   <div key={idx} className="p-2 bg-dark-800 border border-dark-700 rounded-lg text-xs text-dark-400 truncate">
-                    📄 {doc.name || `Document ${idx + 1}`}
+                    ?? {doc.name || `Document ${idx + 1}`}
                   </div>
                 ))}
               </div>
@@ -915,8 +917,8 @@ export default function VendorProfilePage() {
                       </div>
                       <p className="text-xs text-dark-500 mb-2">{pricing.description}</p>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-dark-400">Base: ₱{pricing.baseFee.toLocaleString()}</span>
-                        <span className="text-dark-400">₱{pricing.perKmRate}/km</span>
+                        <span className="text-dark-400">Base: ?{pricing.baseFee.toLocaleString()}</span>
+                        <span className="text-dark-400">?{pricing.perKmRate}/km</span>
                       </div>
                     </button>
                   );
@@ -933,11 +935,11 @@ export default function VendorProfilePage() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <p className="text-2xl font-bold text-green-400">₱{computedTravelFees.baseFee.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-green-400">?{computedTravelFees.baseFee.toLocaleString()}</p>
                     <p className="text-xs text-dark-500">Base Fee</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-green-400">₱{computedTravelFees.perKmRate}</p>
+                    <p className="text-2xl font-bold text-green-400">?{computedTravelFees.perKmRate}</p>
                     <p className="text-xs text-dark-500">Per Kilometer</p>
                   </div>
                   <div>
