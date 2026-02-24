@@ -102,15 +102,17 @@ try {
         $results[] = "Status enum update note: " . $e->getMessage();
     }
     
-    // Get paid bookings that don't have refund requests yet
+    // Get bookings that don't have refund requests yet
+    // Include bookings with any payment (paid, partial) or confirmed status
     $stmt = $pdo->query("
         SELECT b.id, b.user_id, b.vendor_id, b.total_price, b.amount_paid, b.service_id,
+               b.payment_status, b.status,
                u.name as user_name, v.business_name as vendor_name
         FROM bookings b
         JOIN users u ON b.user_id = u.id
         JOIN vendors v ON b.vendor_id = v.id
-        WHERE b.payment_status IN ('paid', 'partial')
-        AND b.id NOT IN (SELECT booking_id FROM refund_requests)
+        WHERE b.id NOT IN (SELECT booking_id FROM refund_requests)
+        AND b.status != 'cancelled'
         ORDER BY RAND()
         LIMIT 10
     ");
@@ -206,7 +208,10 @@ try {
         if ($index >= count($scenarios)) break;
         
         $scenario = $scenarios[$index];
-        $amount = $booking['amount_paid'] > 0 ? $booking['amount_paid'] : $booking['total_price'];
+        // Use amount_paid if > 0, otherwise use total_price, fallback to random amount
+        $amountPaid = floatval($booking['amount_paid'] ?? 0);
+        $totalPrice = floatval($booking['total_price'] ?? 0);
+        $amount = $amountPaid > 0 ? $amountPaid : ($totalPrice > 0 ? $totalPrice : rand(5000, 50000));
         
         // Calculate timestamps
         $createdAt = date('Y-m-d H:i:s', strtotime('-' . (10 - $index) . ' days'));
@@ -268,6 +273,7 @@ try {
     echo json_encode([
         'success' => true,
         'message' => 'Seeded ' . count($created) . ' refund requests',
+        'available_bookings' => count($bookings),
         'setup_results' => $results,
         'created' => $created,
         'counts_by_status' => $counts
