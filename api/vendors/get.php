@@ -36,6 +36,7 @@ try {
     $sql = "
         SELECT 
             v.id,
+            v.user_id,
             v.business_name,
             v.category,
             v.description,
@@ -74,6 +75,7 @@ try {
 
     // Parse JSON images
     $vendor['images'] = $vendor['images'] ? json_decode($vendor['images'], true) : [];
+    $vendor['user_id'] = (int)$vendor['user_id'];
     $vendor['rating'] = (float)$vendor['rating'];
     $vendor['review_count'] = (int)$vendor['review_count'];
     $vendor['is_verified'] = (bool)$vendor['is_verified'];

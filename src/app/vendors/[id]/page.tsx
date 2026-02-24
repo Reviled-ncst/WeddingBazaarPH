@@ -53,6 +53,7 @@ interface Review {
 
 interface VendorDetail {
   id: number;
+  user_id: number;
   business_name: string;
   category: string;
   description: string;
@@ -708,7 +709,7 @@ export default function VendorDetailPage() {
           setShowMessageModal(false);
           setSelectedService(null);
         }}
-        vendorId={vendorId}
+        vendorId={vendor.user_id}
         vendorName={vendor.business_name}
         userId={userId}
         service={selectedService}
