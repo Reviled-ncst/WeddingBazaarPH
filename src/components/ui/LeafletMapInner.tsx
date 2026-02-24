@@ -37,61 +37,6 @@ export default function LeafletMapInner({ data }: LeafletMapInnerProps) {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const heatLayerRef = useRef<L.Layer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const heatPointsRef = useRef<[number, number, number][]>([]);
-
-  // Calculate radius based on zoom level to maintain consistent geographic size
-  const getRadiusForZoom = (zoom: number): number => {
-    // Base radius at zoom 6, scale exponentially
-    const baseZoom = 6;
-    const baseRadius = 50;
-    const scaleFactor = Math.pow(2, zoom - baseZoom);
-    return Math.max(15, Math.min(100, baseRadius * scaleFactor));
-  };
-
-  const getBlurForZoom = (zoom: number): number => {
-    const baseZoom = 6;
-    const baseBlur = 30;
-    const scaleFactor = Math.pow(2, zoom - baseZoom);
-    return Math.max(10, Math.min(60, baseBlur * scaleFactor));
-  };
-
-  // Function to update heat layer
-  const updateHeatLayer = (map: L.Map, points: [number, number, number][]) => {
-    // Remove existing heat layer
-    if (heatLayerRef.current) {
-      map.removeLayer(heatLayerRef.current);
-      heatLayerRef.current = null;
-    }
-
-    if (points.length === 0) return;
-
-    const zoom = map.getZoom();
-    const radius = getRadiusForZoom(zoom);
-    const blur = getBlurForZoom(zoom);
-
-    // Create heat layer with pink/magenta gradient
-    const heat = L.heatLayer(points, {
-      radius: radius,
-      blur: blur,
-      maxZoom: 18,
-      minOpacity: 0.5,
-      max: 1.0,
-      gradient: {
-        0.0: '#1e1b4b',   // Dark purple (cold)
-        0.2: '#4c1d95',   // Purple
-        0.4: '#7c3aed',   // Violet
-        0.5: '#a855f7',   // Light violet
-        0.6: '#d946ef',   // Fuchsia
-        0.7: '#ec4899',   // Pink-500
-        0.8: '#f472b6',   // Pink-400
-        0.9: '#f9a8d4',   // Pink-300
-        1.0: '#fce7f3',   // Pink-100 (hot)
-      }
-    });
-
-    heat.addTo(map);
-    heatLayerRef.current = heat;
-  };
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -115,13 +60,6 @@ export default function LeafletMapInner({ data }: LeafletMapInnerProps) {
     // Create markers layer group
     markersLayerRef.current = L.layerGroup().addTo(map);
 
-    // Update heat layer on zoom change
-    map.on('zoomend', () => {
-      if (heatPointsRef.current.length > 0) {
-        updateHeatLayer(map, heatPointsRef.current);
-      }
-    });
-
     mapInstanceRef.current = map;
 
     return () => {
@@ -137,49 +75,49 @@ export default function LeafletMapInner({ data }: LeafletMapInnerProps) {
     const map = mapInstanceRef.current;
     if (!map) return;
 
+    // Remove existing heat layer
+    if (heatLayerRef.current) {
+      map.removeLayer(heatLayerRef.current);
+      heatLayerRef.current = null;
+    }
+
     // Clear existing markers
     if (markersLayerRef.current) {
       markersLayerRef.current.clearLayers();
     }
 
-    if (data.length === 0) {
-      heatPointsRef.current = [];
-      if (heatLayerRef.current) {
-        map.removeLayer(heatLayerRef.current);
-        heatLayerRef.current = null;
-      }
-      return;
-    }
+    if (data.length === 0) return;
 
     // Find max views for scaling intensity
     const maxViews = Math.max(...data.map(p => p.views));
 
     // Create heat data points: [lat, lng, intensity]
-    const heatPoints: [number, number, number][] = [];
-    
-    data.forEach((point) => {
+    // Simple approach - one point per location
+    const heatPoints: [number, number, number][] = data.map((point) => {
       const intensity = point.views / maxViews;
-      // Add the main point with full intensity
-      heatPoints.push([point.lat, point.lng, intensity]);
-      
-      // Add surrounding points for better heat spread on high-traffic areas
-      const spreadCount = Math.max(1, Math.round(intensity * 8));
-      for (let i = 0; i < spreadCount; i++) {
-        const angle = (i / spreadCount) * Math.PI * 2;
-        const distance = 0.15 + Math.random() * 0.2; // Geographic spread ~15-35km
-        heatPoints.push([
-          point.lat + Math.sin(angle) * distance,
-          point.lng + Math.cos(angle) * distance,
-          intensity * 0.6 // Lower intensity for spread points
-        ]);
+      return [point.lat, point.lng, intensity] as [number, number, number];
+    });
+
+    // Create heat layer with fixed radius and pink gradient
+    const heat = L.heatLayer(heatPoints, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+      minOpacity: 0.4,
+      max: 1.0,
+      gradient: {
+        0.0: '#312e81',   // Indigo-900 (cold)
+        0.25: '#6366f1',  // Indigo-500
+        0.5: '#a855f7',   // Purple-500
+        0.65: '#d946ef',  // Fuchsia-500
+        0.8: '#ec4899',   // Pink-500
+        0.9: '#f472b6',   // Pink-400
+        1.0: '#fdf2f8',   // Pink-50 (hot)
       }
     });
 
-    // Store for zoom updates
-    heatPointsRef.current = heatPoints;
-
-    // Create initial heat layer
-    updateHeatLayer(map, heatPoints);
+    heat.addTo(map);
+    heatLayerRef.current = heat;
 
     // Add small markers for city labels (on top of heat layer)
     data.forEach((point) => {
