@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   MapPin, Star, Heart, BadgeCheck, Phone, Mail, 
-  Calendar, ChevronLeft, ChevronRight, MessageCircle, ArrowLeft
+  Calendar, ChevronLeft, ChevronRight, MessageCircle, ArrowLeft,
+  Check, Users, Clock, Package, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Button, Badge, Card } from '@/components/ui';
 import { vendorsApi, savedApi } from '@/lib/api';
@@ -19,14 +20,27 @@ interface ServiceImage {
   originalName?: string;
 }
 
+interface PricingItem {
+  description: string;
+  quantity?: number;
+  unit?: string;
+  rate?: number;
+  amount?: number;
+}
+
 interface Service {
   id: number;
   name: string;
   description: string;
   price: number;
-  duration: string;
+  base_total?: number;
+  duration?: string;
   is_active: boolean;
   images?: ServiceImage[];
+  pricing_items?: PricingItem[];
+  inclusions?: string[];
+  add_ons?: Array<{ name: string; price: number }>;
+  details?: Record<string, string | number>;
 }
 
 interface Review {
@@ -140,6 +154,7 @@ export default function VendorDetailPage() {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [highlightPackages, setHighlightPackages] = useState(false);
+  const [expandedService, setExpandedService] = useState<number | null>(null);
   
   // Refs
   const servicesRef = useRef<HTMLDivElement>(null);
@@ -414,22 +429,126 @@ export default function VendorDetailPage() {
                   {vendor.services.map((service) => (
                     <div
                       key={service.id}
-                      className={`flex flex-col md:flex-row md:items-center justify-between p-4 bg-dark-800/50 rounded-lg transition-all ${highlightPackages ? 'hover:bg-dark-700/50 cursor-pointer' : ''}`}
-                      onClick={highlightPackages ? () => handleBookService(service) : undefined}
+                      className={`bg-dark-800/50 rounded-lg transition-all overflow-hidden ${highlightPackages ? 'hover:bg-dark-700/50 ring-2 ring-pink-500/50' : ''}`}
                     >
-                      <div className="mb-2 md:mb-0">
-                        <h3 className="text-white font-medium">{service.name}</h3>
-                        <p className="text-gray-400 text-sm">{service.duration}</p>
-                        {service.description && (
-                          <p className="text-gray-500 text-sm mt-1">{service.description}</p>
-                        )}
+                      {/* Service Header */}
+                      <div 
+                        className="flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer"
+                        onClick={() => setExpandedService(expandedService === service.id ? null : service.id)}
+                      >
+                        <div className="mb-2 md:mb-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-white font-medium">{service.name}</h3>
+                            {expandedService === service.id ? (
+                              <ChevronUp className="w-4 h-4 text-gray-400" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-gray-400" />
+                            )}
+                          </div>
+                          {service.duration && (
+                            <p className="text-gray-400 text-sm flex items-center gap-1 mt-1">
+                              <Clock className="w-3 h-3" />
+                              {service.duration}
+                            </p>
+                          )}
+                          {service.details && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {service.details.coverage_hours && (
+                                <span className="text-xs bg-dark-700 text-gray-300 px-2 py-1 rounded">
+                                  {service.details.coverage_hours} hours
+                                </span>
+                              )}
+                              {service.details.capacity && (
+                                <span className="text-xs bg-dark-700 text-gray-300 px-2 py-1 rounded flex items-center gap-1">
+                                  <Users className="w-3 h-3" />
+                                  {service.details.capacity} guests
+                                </span>
+                              )}
+                              {service.details.persons_included && (
+                                <span className="text-xs bg-dark-700 text-gray-300 px-2 py-1 rounded flex items-center gap-1">
+                                  <Users className="w-3 h-3" />
+                                  {service.details.persons_included} persons
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="text-pink-400 font-semibold text-lg">
+                            {formatPrice(service.price || service.base_total || 0)}
+                          </span>
+                          <Button size="sm" onClick={(e) => { e.stopPropagation(); handleBookService(service); }}>Book</Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-pink-400 font-semibold text-lg">
-                          {formatPrice(service.price)}
-                        </span>
-                        <Button size="sm" onClick={(e) => { e.stopPropagation(); handleBookService(service); }}>Book</Button>
-                      </div>
+
+                      {/* Expanded Service Details */}
+                      {expandedService === service.id && (
+                        <div className="px-4 pb-4 border-t border-dark-700 pt-4">
+                          {service.description && (
+                            <p className="text-gray-400 text-sm mb-4">{service.description}</p>
+                          )}
+
+                          {/* Inclusions */}
+                          {service.inclusions && service.inclusions.length > 0 && (
+                            <div className="mb-4">
+                              <h4 className="text-white text-sm font-medium mb-2 flex items-center gap-2">
+                                <Package className="w-4 h-4 text-pink-400" />
+                                What&apos;s Included
+                              </h4>
+                              <ul className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                                {service.inclusions.map((inclusion, idx) => (
+                                  <li key={idx} className="flex items-start gap-2 text-sm text-gray-400">
+                                    <Check className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                    <span>{inclusion}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Pricing Breakdown */}
+                          {service.pricing_items && service.pricing_items.length > 0 && (
+                            <div className="mb-4">
+                              <h4 className="text-white text-sm font-medium mb-2">Price Breakdown</h4>
+                              <div className="bg-dark-900/50 rounded-lg p-3 space-y-2">
+                                {service.pricing_items.map((item, idx) => (
+                                  <div key={idx} className="flex justify-between text-sm">
+                                    <span className="text-gray-400">
+                                      {item.description}
+                                      {item.quantity && item.unit && (
+                                        <span className="text-gray-500 text-xs ml-1">
+                                          ({item.quantity} {item.unit})
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="text-white">
+                                      {formatPrice(item.amount || (item.rate && item.quantity ? item.rate * item.quantity : item.rate || 0))}
+                                    </span>
+                                  </div>
+                                ))}
+                                <div className="border-t border-dark-700 pt-2 flex justify-between font-medium">
+                                  <span className="text-gray-300">Total</span>
+                                  <span className="text-pink-400">{formatPrice(service.base_total || service.price || 0)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Add-ons */}
+                          {service.add_ons && service.add_ons.length > 0 && (
+                            <div>
+                              <h4 className="text-white text-sm font-medium mb-2">Available Add-ons</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {service.add_ons.map((addon, idx) => (
+                                  <span key={idx} className="text-xs bg-dark-700 border border-dark-600 text-gray-300 px-2 py-1 rounded">
+                                    {addon.name} <span className="text-pink-400">+{formatPrice(addon.price)}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

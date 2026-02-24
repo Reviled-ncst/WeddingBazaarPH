@@ -61,59 +61,83 @@ try {
     
     $paymentMethod = $data['payment_method'] ?? null;
     
-    // Check if location/source columns exist
-    $columnCheck = $pdo->query("SHOW COLUMNS FROM bookings LIKE 'source_page'");
-    $hasSourceColumns = $columnCheck->rowCount() > 0;
-    
-    if ($hasSourceColumns) {
-        // Insert with source tracking
-        $stmt = $pdo->prepare("
-            INSERT INTO bookings (
-                user_id, vendor_id, service_id, event_date, total_price, notes, payment_method, status,
-                source_page, referrer, utm_source, utm_medium, utm_campaign,
-                user_city, user_province, user_latitude, user_longitude,
-                device_type, browser, session_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        
-        $stmt->execute([
-            $data['user_id'],
-            $data['vendor_id'],
-            $data['service_id'],
-            $data['event_date'],
-            $totalPrice,
-            $data['notes'] ?? null,
-            $paymentMethod,
-            $data['source_page'] ?? null,
-            $data['referrer'] ?? null,
-            $data['utm_source'] ?? null,
-            $data['utm_medium'] ?? null,
-            $data['utm_campaign'] ?? null,
-            $data['user_city'] ?? null,
-            $data['user_province'] ?? null,
-            $data['user_latitude'] ?? null,
-            $data['user_longitude'] ?? null,
-            $data['device_type'] ?? null,
-            $data['browser'] ?? null,
-            $data['session_id'] ?? null
-        ]);
-    } else {
-        // Fallback without source tracking
-        $stmt = $pdo->prepare("
-            INSERT INTO bookings (user_id, vendor_id, service_id, event_date, total_price, notes, payment_method, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-        ");
-        
-        $stmt->execute([
-            $data['user_id'],
-            $data['vendor_id'],
-            $data['service_id'],
-            $data['event_date'],
-            $totalPrice,
-            $data['notes'] ?? null,
-            $paymentMethod
-        ]);
+    // Check which optional columns exist
+    $columnCheck = $pdo->query("SHOW COLUMNS FROM bookings");
+    $existingColumns = [];
+    while ($col = $columnCheck->fetch(PDO::FETCH_ASSOC)) {
+        $existingColumns[] = $col['Field'];
     }
+    
+    $hasSourceColumns = in_array('source_page', $existingColumns);
+    $hasGuestCount = in_array('guest_count', $existingColumns);
+    $hasEventAddress = in_array('event_address', $existingColumns);
+    $hasTravelFee = in_array('travel_fee', $existingColumns);
+    $hasEventCoords = in_array('event_latitude', $existingColumns) && in_array('event_longitude', $existingColumns);
+    
+    // Build dynamic insert query
+    $columns = ['user_id', 'vendor_id', 'service_id', 'event_date', 'total_price', 'notes', 'payment_method', 'status'];
+    $placeholders = ['?', '?', '?', '?', '?', '?', '?', '?'];
+    $values = [
+        $data['user_id'],
+        $data['vendor_id'],
+        $data['service_id'],
+        $data['event_date'],
+        $totalPrice,
+        $data['notes'] ?? null,
+        $paymentMethod,
+        'pending'
+    ];
+    
+    // Add guest_count if column exists
+    if ($hasGuestCount) {
+        $columns[] = 'guest_count';
+        $placeholders[] = '?';
+        $values[] = isset($data['guest_count']) && $data['guest_count'] ? (int)$data['guest_count'] : null;
+    }
+    
+    // Add event_address if column exists
+    if ($hasEventAddress) {
+        $columns[] = 'event_address';
+        $placeholders[] = '?';
+        $values[] = $data['event_address'] ?? null;
+    }
+    
+    // Add travel_fee if column exists
+    if ($hasTravelFee) {
+        $columns[] = 'travel_fee';
+        $placeholders[] = '?';
+        $values[] = isset($data['travel_fee']) ? (float)$data['travel_fee'] : 0;
+    }
+    
+    // Add event coordinates if columns exist
+    if ($hasEventCoords) {
+        $columns[] = 'event_latitude';
+        $columns[] = 'event_longitude';
+        $placeholders[] = '?';
+        $placeholders[] = '?';
+        $values[] = isset($data['event_latitude']) ? (float)$data['event_latitude'] : null;
+        $values[] = isset($data['event_longitude']) ? (float)$data['event_longitude'] : null;
+    }
+    
+    // Add source tracking columns if they exist
+    if ($hasSourceColumns) {
+        $sourceColumns = [
+            'source_page', 'referrer', 'utm_source', 'utm_medium', 'utm_campaign',
+            'user_city', 'user_province', 'user_latitude', 'user_longitude',
+            'device_type', 'browser', 'session_id'
+        ];
+        foreach ($sourceColumns as $col) {
+            if (in_array($col, $existingColumns)) {
+                $columns[] = $col;
+                $placeholders[] = '?';
+                $values[] = $data[$col] ?? null;
+            }
+        }
+    }
+    
+    $sql = "INSERT INTO bookings (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ")";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($values);
     
     $bookingId = $pdo->lastInsertId();
     

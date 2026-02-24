@@ -56,11 +56,17 @@ try {
     $updates = [];
     $params = [];
     
-    $allowedFields = ['name', 'description', 'category', 'is_active'];
+    $allowedFields = ['name', 'description', 'category', 'is_active', 'max_bookings_per_day'];
     foreach ($allowedFields as $field) {
         if (isset($input[$field])) {
             $updates[] = "$field = ?";
-            $params[] = $field === 'is_active' ? ($input[$field] ? 1 : 0) : trim($input[$field]);
+            if ($field === 'is_active') {
+                $params[] = $input[$field] ? 1 : 0;
+            } elseif ($field === 'max_bookings_per_day') {
+                $params[] = (int)$input[$field];
+            } else {
+                $params[] = trim($input[$field]);
+            }
         }
     }
     

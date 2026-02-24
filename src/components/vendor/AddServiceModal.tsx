@@ -339,6 +339,7 @@ export interface ServiceFormData {
   details: Record<string, string | number | boolean>;
   inclusions: string[];
   images: ServiceImage[];
+  max_bookings_per_day?: number;
 }
 
 interface ValidationErrors {
@@ -392,6 +393,7 @@ export function AddServiceModal({ isOpen, onClose, onSave, vendorCategory, editS
     details: {},
     inclusions: [],
     images: [],
+    max_bookings_per_day: 1,
   });
 
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -423,6 +425,7 @@ export function AddServiceModal({ isOpen, onClose, onSave, vendorCategory, editS
           details: editService.details || {},
           inclusions: editService.inclusions || [],
           images: editService.images || [],
+          max_bookings_per_day: editService.max_bookings_per_day || 1,
         });
         setErrors({});
         setTouched({});
@@ -1403,6 +1406,33 @@ export function AddServiceModal({ isOpen, onClose, onSave, vendorCategory, editS
                   <p>Select a category first to see specific details</p>
                 </div>
               )}
+
+              {/* Max Bookings Per Day - Common for all categories */}
+              <div className="border-t border-dark-700 pt-6 mt-6">
+                <h4 className="text-white font-medium mb-3">Booking Limits</h4>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1.5">
+                    Maximum Bookings Per Day <span className="text-red-400">*</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={formData.max_bookings_per_day || 1}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        max_bookings_per_day: Math.max(1, Math.min(10, parseInt(e.target.value) || 1))
+                      }))}
+                      className="w-24 px-4 py-3 rounded-xl border border-dark-700 bg-dark-800 text-white text-center focus:outline-none focus:ring-2 focus:ring-pink-400/20 focus:border-pink-400"
+                    />
+                    <span className="text-gray-400 text-sm">bookings per day</span>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Limit how many couples can book this service on the same day
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </div>

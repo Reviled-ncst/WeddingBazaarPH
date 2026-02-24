@@ -59,8 +59,8 @@ try {
     $sql = "
         INSERT INTO services (
             vendor_id, name, description, category, 
-            pricing_items, base_total, add_ons, details, inclusions, images
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            pricing_items, base_total, add_ons, details, inclusions, images, max_bookings_per_day
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ";
     
     $stmt = $pdo->prepare($sql);
@@ -75,6 +75,7 @@ try {
         isset($input['details']) ? json_encode($input['details']) : null,
         isset($input['inclusions']) ? json_encode($input['inclusions']) : null,
         isset($input['images']) ? json_encode($input['images']) : null,
+        isset($input['max_bookings_per_day']) ? (int)$input['max_bookings_per_day'] : 1,
     ]);
     
     $serviceId = $pdo->lastInsertId();

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { 
   X, Calendar, CreditCard, Check, AlertCircle, Info, 
   ChevronRight, ChevronLeft, Wallet, Building, Smartphone, 
-  Receipt, Clock, MapPin, Navigation
+  Receipt, Clock, MapPin, Navigation, Users, Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LocationPicker } from '@/components/ui/LocationPicker';
@@ -13,12 +13,24 @@ import { PaymentModal } from './PaymentModal';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
+interface PricingItem {
+  description: string;
+  quantity?: number;
+  unit?: string;
+  rate?: number;
+  amount?: number;
+}
+
 interface Service {
   id: number;
   name: string;
   description?: string;
   price?: number;
   base_total?: number;
+  pricing_items?: PricingItem[];
+  inclusions?: string[];
+  add_ons?: Array<{ name: string; price: number }>;
+  details?: Record<string, string | number>;
 }
 
 interface VendorTravelInfo {
@@ -80,6 +92,7 @@ export function BookingModal({
   const [currentStep, setCurrentStep] = useState<BookingStep>('date');
   const [eventDate, setEventDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [guestCount, setGuestCount] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -128,6 +141,7 @@ export function BookingModal({
       setCurrentStep('date');
       setEventDate('');
       setNotes('');
+      setGuestCount('');
       setError('');
       setSuccess(false);
       setCreatedBookingId(null);
@@ -167,7 +181,7 @@ export function BookingModal({
 
   const basePrice = service.price || service.base_total || 0;
   const totalPrice = basePrice + Math.round(travelFee);
-  const hasTravelPricing = vendorTravelInfo?.per_km_rate && vendorTravelInfo.per_km_rate > 0;
+  const hasTravelPricing = !!(vendorTravelInfo?.per_km_rate && vendorTravelInfo.per_km_rate > 0);
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -260,6 +274,7 @@ export function BookingModal({
           event_latitude: eventLocation.lat,
           event_longitude: eventLocation.lng,
           event_address: eventLocation.address,
+          guest_count: guestCount || null,
           notes: notes || null,
           // Source tracking data
           source_page: sourcePage,
@@ -510,6 +525,25 @@ export function BookingModal({
                     </div>
                   )}
 
+                  {/* Guest Count */}
+                  <div className="mt-4">
+                    <label className="block text-gray-300 text-sm font-medium mb-2">
+                      <Users className="w-4 h-4 inline mr-2" />
+                      Expected Guest Count
+                    </label>
+                    <input
+                      type="number"
+                      value={guestCount}
+                      onChange={(e) => setGuestCount(e.target.value ? parseInt(e.target.value) : '')}
+                      placeholder="e.g., 100"
+                      min={1}
+                      className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
+                    />
+                    <p className="text-gray-500 text-xs mt-1">
+                      This helps the vendor prepare appropriately for your event
+                    </p>
+                  </div>
+
                   {/* Notes */}
                   <div className="mt-4">
                     <label className="block text-gray-300 text-sm font-medium mb-2">
@@ -528,46 +562,132 @@ export function BookingModal({
 
               {/* Step 2: Confirmation */}
               {currentStep === 'confirm' && (
-                <div>
-                  <div className="bg-dark-800 rounded-xl p-5 mb-4">
+                <div className="space-y-4">
+                  {/* Event Details Card */}
+                  <div className="bg-dark-800 rounded-xl p-5">
                     <h4 className="text-white font-medium mb-4 flex items-center gap-2">
-                      <Receipt className="w-5 h-5 text-pink-400" />
-                      Booking Summary
+                      <Calendar className="w-5 h-5 text-pink-400" />
+                      Event Details
                     </h4>
                     
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Service</span>
-                        <span className="text-white">{service.name}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Vendor</span>
-                        <span className="text-white">{vendorName}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Event Date</span>
                         <span className="text-white">{formatDate(eventDate)}</span>
                       </div>
+                      {guestCount && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-400 flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            Expected Guests
+                          </span>
+                          <span className="text-white">{guestCount} guests</span>
+                        </div>
+                      )}
                       {eventLocation.address && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Event Location</span>
+                          <span className="text-gray-400 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            Location
+                          </span>
                           <span className="text-white text-right max-w-[200px] truncate">{eventLocation.address}</span>
                         </div>
                       )}
                       {notes && (
                         <div className="pt-2 border-t border-dark-700">
-                          <span className="text-gray-400 text-sm">Notes:</span>
+                          <span className="text-gray-400 text-sm">Special Requests:</span>
                           <p className="text-gray-300 text-sm mt-1">{notes}</p>
                         </div>
                       )}
-                      
-                      {/* Price Breakdown */}
-                      <div className="pt-3 border-t border-dark-700 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Service Price</span>
-                          <span className="text-white">{formatPrice(basePrice)}</span>
+                    </div>
+                  </div>
+
+                  {/* Service & Package Details Card */}
+                  <div className="bg-dark-800 rounded-xl p-5">
+                    <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+                      <Package className="w-5 h-5 text-pink-400" />
+                      Package Details
+                    </h4>
+                    
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Service</span>
+                        <span className="text-white font-medium">{service.name}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Vendor</span>
+                        <span className="text-white">{vendorName}</span>
+                      </div>
+
+                      {/* Pricing Items Breakdown */}
+                      {service.pricing_items && service.pricing_items.length > 0 && (
+                        <div className="pt-3 border-t border-dark-700">
+                          <span className="text-gray-400 text-xs uppercase tracking-wider mb-2 block">Price Breakdown</span>
+                          <div className="space-y-1.5">
+                            {service.pricing_items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between text-sm">
+                                <span className="text-gray-400">
+                                  {item.description}
+                                  {item.quantity && item.unit && (
+                                    <span className="text-gray-500 text-xs ml-1">
+                                      ({item.quantity} {item.unit})
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-white">
+                                  {item.amount ? formatPrice(item.amount) : item.rate ? formatPrice(item.rate) : '-'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        {hasTravelPricing && (
+                      )}
+
+                      {/* Inclusions */}
+                      {service.inclusions && service.inclusions.length > 0 && (
+                        <div className="pt-3 border-t border-dark-700">
+                          <span className="text-gray-400 text-xs uppercase tracking-wider mb-2 block">What&apos;s Included</span>
+                          <ul className="space-y-1">
+                            {service.inclusions.map((inclusion, idx) => (
+                              <li key={idx} className="flex items-center gap-2 text-sm text-gray-300">
+                                <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                                {inclusion}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Service Details */}
+                      {service.details && Object.keys(service.details).length > 0 && (
+                        <div className="pt-3 border-t border-dark-700">
+                          <span className="text-gray-400 text-xs uppercase tracking-wider mb-2 block">Details</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(service.details).map(([key, value]) => (
+                              <div key={key} className="text-sm">
+                                <span className="text-gray-500 capitalize">{key.replace(/_/g, ' ')}: </span>
+                                <span className="text-gray-300">{value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Price Summary Card */}
+                  <div className="bg-dark-800 rounded-xl p-5">
+                    <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+                      <Receipt className="w-5 h-5 text-pink-400" />
+                      Price Summary
+                    </h4>
+                    
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Package Price</span>
+                        <span className="text-white">{formatPrice(basePrice)}</span>
+                      </div>
+                      {hasTravelPricing && (
                           <>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-400 flex items-center gap-1">
@@ -588,10 +708,9 @@ export function BookingModal({
                           <span className="text-pink-400 font-bold text-lg">{formatPrice(totalPrice)}</span>
                         </div>
                       </div>
-                    </div>
                   </div>
 
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-4">
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                     <div className="flex items-start gap-2">
                       <CreditCard className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
                       <div>
