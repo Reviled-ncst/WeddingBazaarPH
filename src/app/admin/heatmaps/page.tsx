@@ -7,7 +7,8 @@ import {
   Layers, 
   ArrowDown,
   RefreshCw,
-  Eye
+  Eye,
+  MapPin
 } from 'lucide-react';
 
 interface HeatmapPoint {
@@ -32,17 +33,35 @@ interface ScrollData {
   count: number;
 }
 
+interface GeoPoint {
+  city: string;
+  lat: number;
+  lng: number;
+  views: number;
+  sessions: number;
+}
+
+// Philippines bounding box for map projection
+const PH_BOUNDS = {
+  minLat: 4.5,
+  maxLat: 21.5,
+  minLng: 116,
+  maxLng: 127
+};
+
 export default function HeatmapsPage() {
   const [heatmapData, setHeatmapData] = useState<HeatmapPoint[]>([]);
   const [topElements, setTopElements] = useState<TopElement[]>([]);
   const [scrollDistribution, setScrollDistribution] = useState<ScrollData[]>([]);
   const [avgScrollDepth, setAvgScrollDepth] = useState(0);
+  const [geoData, setGeoData] = useState<GeoPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('7d');
   const [selectedPage, setSelectedPage] = useState('/');
-  const [viewType, setViewType] = useState<'clicks' | 'scroll'>('clicks');
+  const [viewType, setViewType] = useState<'clicks' | 'scroll' | 'geo'>('clicks');
   const [pages, setPages] = useState<string[]>(['/']);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const geoCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch available pages
@@ -88,9 +107,11 @@ export default function HeatmapsPage() {
           if (viewType === 'clicks') {
             setHeatmapData(result.heatmapData || []);
             setTopElements(result.topElements || []);
-          } else {
+          } else if (viewType === 'scroll') {
             setScrollDistribution(result.scrollDistribution || []);
             setAvgScrollDepth(result.avgScrollDepth || 0);
+          } else if (viewType === 'geo') {
+            setGeoData(result.geoData || []);
           }
         }
       } catch (err) {
@@ -167,6 +188,112 @@ export default function HeatmapsPage() {
     });
   }, [heatmapData, viewType]);
 
+  // Draw geographic heatmap on canvas
+  useEffect(() => {
+    if (!geoCanvasRef.current || viewType !== 'geo') return;
+    
+    const canvas = geoCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = 600;
+    const height = 700;
+    canvas.width = width;
+    canvas.height = height;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // Draw background (water/ocean)
+    ctx.fillStyle = '#1a365d';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Simple Philippines outline (approximate)
+    ctx.strokeStyle = '#4a5568';
+    ctx.lineWidth = 2;
+    
+    // Function to project lat/lng to canvas coordinates
+    const projectToCanvas = (lat: number, lng: number): [number, number] => {
+      const x = ((lng - PH_BOUNDS.minLng) / (PH_BOUNDS.maxLng - PH_BOUNDS.minLng)) * width;
+      const y = height - ((lat - PH_BOUNDS.minLat) / (PH_BOUNDS.maxLat - PH_BOUNDS.minLat)) * height;
+      return [x, y];
+    };
+    
+    // Draw major Philippine islands (simplified shapes)
+    ctx.fillStyle = '#2d3748';
+    ctx.strokeStyle = '#4a5568';
+    
+    // Luzon (simplified)
+    ctx.beginPath();
+    const luzonPoints = [
+      [18.5, 120.5], [19.5, 121], [18.8, 122], [17.5, 121.5],
+      [16.5, 120.5], [15, 121], [14, 121.5], [14.5, 122.5],
+      [14, 123], [13.5, 123.5], [14, 124], [15, 123.5], [16, 122],
+      [17, 121.5], [18, 121]
+    ];
+    const [startX, startY] = projectToCanvas(luzonPoints[0][0], luzonPoints[0][1]);
+    ctx.moveTo(startX, startY);
+    luzonPoints.forEach(([lat, lng]) => {
+      const [x, y] = projectToCanvas(lat, lng);
+      ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
+    // Visayas (simplified - Cebu/Bohol area)
+    ctx.beginPath();
+    ctx.arc(...projectToCanvas(10.3, 123.9), 25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    // Mindanao (simplified)
+    ctx.beginPath();
+    ctx.arc(...projectToCanvas(7.5, 125), 50, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    
+    if (geoData.length === 0) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No geographic data available', width / 2, height / 2);
+      return;
+    }
+
+    // Find max value for normalization
+    const maxViews = Math.max(...geoData.map(p => p.views));
+    
+    // Draw city markers with heatmap effect
+    geoData.forEach(point => {
+      const [x, y] = projectToCanvas(point.lat, point.lng);
+      const intensity = point.views / maxViews;
+      const radius = 15 + intensity * 35;
+      
+      // Create radial gradient (pink theme)
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0, `rgba(236, 72, 153, ${0.5 + intensity * 0.5})`);
+      gradient.addColorStop(0.5, `rgba(236, 72, 153, ${0.3 + intensity * 0.3})`);
+      gradient.addColorStop(1, 'rgba(236, 72, 153, 0)');
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw city label
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(point.city, x, y - radius - 5);
+      
+      // Draw view count
+      ctx.fillStyle = '#ec4899';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(`${point.views} views`, x, y + 4);
+    });
+  }, [geoData, viewType]);
+
   const getScrollColor = (depth: number) => {
     if (depth >= 75) return 'bg-green-500';
     if (depth >= 50) return 'bg-yellow-500';
@@ -207,6 +334,17 @@ export default function HeatmapsPage() {
             >
               <ArrowDown className="w-4 h-4" />
               Scroll
+            </button>
+            <button
+              onClick={() => setViewType('geo')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition-colors ${
+                viewType === 'geo'
+                  ? 'bg-pink-500 text-white'
+                  : 'text-dark-300 hover:text-white'
+              }`}
+            >
+              <MapPin className="w-4 h-4" />
+              Geographic
             </button>
           </div>
           
@@ -401,6 +539,87 @@ export default function HeatmapsPage() {
                 <p>Bottom of page</p>
               </div>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Geographic Heatmap View */}
+      {viewType === 'geo' && !loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Map Canvas */}
+          <Card className="lg:col-span-2 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Geographic Heatmap - Philippines</h3>
+              <span className="text-dark-400 text-sm">{geoData.length} locations</span>
+            </div>
+            <div className="flex justify-center bg-dark-900 rounded-lg overflow-hidden">
+              <canvas
+                ref={geoCanvasRef}
+                className="max-w-full"
+                style={{ maxHeight: '700px' }}
+              />
+            </div>
+            <p className="text-dark-400 text-xs text-center mt-2">
+              Circle size and intensity indicate activity volume
+            </p>
+          </Card>
+
+          {/* Location Stats */}
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Top Locations</h3>
+            
+            <div className="space-y-3">
+              {geoData.length > 0 ? (
+                geoData.sort((a, b) => b.views - a.views).slice(0, 10).map((location, index) => {
+                  const maxViews = geoData[0]?.views || 1;
+                  const percentage = (location.views / maxViews) * 100;
+                  
+                  return (
+                    <div key={location.city}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white text-sm flex items-center gap-2">
+                          <span className="text-pink-400 font-bold">{index + 1}.</span>
+                          {location.city}
+                        </span>
+                        <span className="text-dark-300 text-sm">{location.views} views</span>
+                      </div>
+                      <div className="w-full h-2 bg-dark-700 rounded overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-pink-500 to-pink-400 transition-all"
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-dark-400">
+                  <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No location data available</p>
+                  <p className="text-sm mt-1">Location tracking requires user consent</p>
+                </div>
+              )}
+            </div>
+
+            {/* Total stats */}
+            {geoData.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-dark-700">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-dark-800 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-white">
+                      {geoData.reduce((acc, l) => acc + l.views, 0)}
+                    </p>
+                    <p className="text-dark-400 text-xs">Total Views</p>
+                  </div>
+                  <div className="bg-dark-800 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-white">
+                      {geoData.reduce((acc, l) => acc + l.sessions, 0)}
+                    </p>
+                    <p className="text-dark-400 text-xs">Total Sessions</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       )}
