@@ -211,32 +211,73 @@ try {
             exit;
         }
         
-        // Geographic heatmap data from page views and bookings
+        // Check if lat/lng columns exist, if not try to add them
+        $columns = $pdo->query("SHOW COLUMNS FROM page_views")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('lat', $columns)) {
+            try {
+                $pdo->exec("ALTER TABLE page_views ADD COLUMN lat DECIMAL(10,7) AFTER city");
+                $pdo->exec("ALTER TABLE page_views ADD COLUMN lng DECIMAL(10,7) AFTER lat");
+            } catch (Exception $e) {
+                // Column might exist already
+            }
+        }
         
-        // Philippine city coordinates
+        // Philippine city coordinates (expanded list)
         $phCityCoords = [
             'Manila' => [14.5995, 120.9842],
             'Quezon City' => [14.6760, 121.0437],
             'Makati' => [14.5547, 121.0244],
             'Taguig' => [14.5176, 121.0509],
             'Pasig' => [14.5764, 121.0851],
+            'Pasay' => [14.5378, 121.0014],
+            'Parañaque' => [14.4793, 121.0198],
+            'Las Piñas' => [14.4445, 120.9831],
+            'Mandaluyong' => [14.5794, 121.0359],
+            'San Juan' => [14.6016, 121.0355],
+            'Marikina' => [14.6507, 121.1029],
+            'Muntinlupa' => [14.4081, 121.0415],
+            'Caloocan' => [14.7566, 120.9672],
+            'Malabon' => [14.6697, 120.9619],
+            'Navotas' => [14.6662, 120.9416],
+            'Valenzuela' => [14.6943, 120.9810],
             'Tagaytay' => [14.1153, 120.9621],
+            'Batangas City' => [13.7565, 121.0583],
+            'Antipolo' => [14.5861, 121.1761],
+            'Cavite City' => [14.4833, 120.8958],
             'Cebu City' => [10.3157, 123.8854],
+            'Mandaue' => [10.3236, 123.9223],
+            'Lapu-Lapu' => [10.3103, 123.9494],
             'Davao City' => [7.1907, 125.4553],
             'Baguio City' => [16.4023, 120.5960],
             'Iloilo City' => [10.7202, 122.5621],
-            'Cagayan de Oro' => [8.4542, 124.6319]
+            'Cagayan de Oro' => [8.4542, 124.6319],
+            'Zamboanga City' => [6.9214, 122.0790],
+            'General Santos' => [6.1164, 125.1716],
+            'Bacolod' => [10.6407, 122.9689],
+            'Angeles City' => [15.1450, 120.5887],
+            'San Fernando' => [15.0286, 120.6881],
+            'Olongapo' => [14.8333, 120.2833],
+            'Dagupan' => [16.0433, 120.3336],
+            'Laoag' => [18.1989, 120.5936],
+            'Tuguegarao' => [17.6131, 121.7269],
+            'Naga' => [13.6192, 123.1814],
+            'Legazpi' => [13.1391, 123.7437],
+            'Puerto Princesa' => [9.7392, 118.7353],
+            'Tacloban' => [11.2543, 124.9617],
+            'Butuan' => [8.9475, 125.5406]
         ];
         
-        // Get page views by city
+        // Get page views by city with lat/lng
         $stmt = $pdo->prepare("
             SELECT 
                 COALESCE(city, 'Unknown') as city,
                 COUNT(*) as views,
-                COUNT(DISTINCT session_id) as sessions
+                COUNT(DISTINCT session_id) as sessions,
+                AVG(lat) as avg_lat,
+                AVG(lng) as avg_lng
             FROM page_views
             WHERE created_at >= ?
-            AND city IS NOT NULL
+            AND city IS NOT NULL AND city != ''
             GROUP BY city
             ORDER BY views DESC
             LIMIT 50
@@ -244,26 +285,67 @@ try {
         $stmt->execute([$startDate]);
         $viewsByCity = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Add coordinates
+        // Add coordinates (from database or lookup table)
         $geoData = [];
         foreach ($viewsByCity as $location) {
             $cityName = $location['city'];
-            if (isset($phCityCoords[$cityName])) {
+            $lat = null;
+            $lng = null;
+            
+            // First try database lat/lng
+            if (!empty($location['avg_lat']) && !empty($location['avg_lng'])) {
+                $lat = (float)$location['avg_lat'];
+                $lng = (float)$location['avg_lng'];
+            }
+            // Then try lookup table
+            elseif (isset($phCityCoords[$cityName])) {
+                $lat = $phCityCoords[$cityName][0];
+                $lng = $phCityCoords[$cityName][1];
+            }
+            // Try partial match
+            else {
+                foreach ($phCityCoords as $city => $coords) {
+                    if (stripos($cityName, $city) !== false || stripos($city, $cityName) !== false) {
+                        $lat = $coords[0];
+                        $lng = $coords[1];
+                        break;
+                    }
+                }
+            }
+            
+            if ($lat !== null && $lng !== null) {
                 $geoData[] = [
                     'city' => $cityName,
-                    'lat' => $phCityCoords[$cityName][0],
-                    'lng' => $phCityCoords[$cityName][1],
+                    'lat' => $lat,
+                    'lng' => $lng,
                     'views' => (int)$location['views'],
                     'sessions' => (int)$location['sessions']
                 ];
             }
         }
         
+        // Also get country-level stats
+        $stmt = $pdo->prepare("
+            SELECT 
+                COALESCE(country, 'Unknown') as country,
+                COUNT(*) as views,
+                COUNT(DISTINCT session_id) as sessions
+            FROM page_views
+            WHERE created_at >= ?
+            AND country IS NOT NULL AND country != ''
+            GROUP BY country
+            ORDER BY views DESC
+            LIMIT 20
+        ");
+        $stmt->execute([$startDate]);
+        $viewsByCountry = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
         echo json_encode([
             'success' => true,
             'period' => $period,
             'geoData' => $geoData,
-            'viewsByCity' => $viewsByCity
+            'viewsByCity' => $viewsByCity,
+            'viewsByCountry' => $viewsByCountry
         ]);
     }
 } catch (Exception $e) {

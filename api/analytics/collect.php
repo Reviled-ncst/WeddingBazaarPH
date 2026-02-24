@@ -99,6 +99,43 @@ function parseUserAgent($ua) {
 
 $uaInfo = parseUserAgent($userAgent);
 
+// IP-to-location lookup (using free ip-api.com)
+function getLocationFromIP($ip) {
+    // Don't lookup for local/private IPs
+    if (!$ip || $ip === '127.0.0.1' || $ip === '::1' || preg_match('/^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/', $ip)) {
+        return ['country' => null, 'city' => null, 'lat' => null, 'lng' => null];
+    }
+    
+    // If it's a comma-separated list (X-Forwarded-For), use the first one
+    if (strpos($ip, ',') !== false) {
+        $ip = trim(explode(',', $ip)[0]);
+    }
+    
+    // Try to get location from ip-api.com (free for non-commercial use, 45 req/min)
+    $ctx = stream_context_create([
+        'http' => ['timeout' => 2] // 2 second timeout
+    ]);
+    
+    $response = @file_get_contents("http://ip-api.com/json/{$ip}?fields=status,country,city,lat,lon", false, $ctx);
+    
+    if ($response) {
+        $data = json_decode($response, true);
+        if ($data && $data['status'] === 'success') {
+            return [
+                'country' => $data['country'] ?? null,
+                'city' => $data['city'] ?? null,
+                'lat' => $data['lat'] ?? null,
+                'lng' => $data['lon'] ?? null
+            ];
+        }
+    }
+    
+    return ['country' => null, 'city' => null, 'lat' => null, 'lng' => null];
+}
+
+// Cache location lookup to avoid rate limiting
+$locationData = getLocationFromIP($ipAddress);
+
 try {
     switch ($type) {
         case 'pageview':
@@ -120,13 +157,13 @@ try {
                 $uaInfo['os']
             ]);
             
-            // Insert page view
+            // Insert page view with location data
             $stmt = $pdo->prepare("
                 INSERT INTO page_views (
                     session_id, page_path, page_title, referrer, user_agent, ip_address,
-                    device_type, browser, os, screen_width, screen_height, 
+                    country, city, device_type, browser, os, screen_width, screen_height, 
                     viewport_width, viewport_height
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $sessionId,
@@ -135,6 +172,8 @@ try {
                 $input['referrer'] ?? null,
                 $userAgent,
                 $ipAddress,
+                $locationData['country'],
+                $locationData['city'],
                 $uaInfo['device'],
                 $uaInfo['browser'],
                 $uaInfo['os'],
