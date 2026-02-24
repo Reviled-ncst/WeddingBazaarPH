@@ -52,7 +52,7 @@ export default function GeographicMap({ data, className = '' }: GeographicMapPro
   }
 
   return (
-    <div className={`rounded-lg overflow-hidden ${className}`} style={{ minHeight: '500px' }}>
+    <div className={`rounded-lg overflow-hidden h-full ${className}`} style={{ minHeight: '500px' }}>
       <LeafletMap data={data} />
     </div>
   );

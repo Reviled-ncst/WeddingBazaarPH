@@ -147,7 +147,7 @@ export default function LeafletMapInner({ data }: LeafletMapInnerProps) {
           color: #ec4899 !important;
         }
       `}</style>
-      <div ref={mapRef} style={{ width: '100%', height: '500px' }} />
+      <div ref={mapRef} style={{ width: '100%', height: '100%', minHeight: '500px' }} />
     </>
   );
 }
