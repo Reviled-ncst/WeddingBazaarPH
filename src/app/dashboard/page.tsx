@@ -4,12 +4,16 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Heart, MessageSquare, Bookmark, Settings, Search, Star, MapPin, Trash2 } from 'lucide-react';
+import { Calendar, Heart, MessageSquare, Bookmark, Settings, Search, Star, MapPin, Trash2, Clock, CheckCircle, XCircle, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { savedApi } from '@/lib/api';
 import { formatPriceRange } from '@/lib/utils';
 import { MessagesTab } from '@/components/messaging/MessagesTab';
+import { PaymentModal } from '@/components/booking/PaymentModal';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
 interface SavedVendor {
   id: number;
@@ -21,6 +25,28 @@ interface SavedVendor {
   price_range: string;
 }
 
+interface Booking {
+  id: number;
+  service_id: number;
+  service_name: string;
+  vendor_id: number;
+  vendor_name: string;
+  business_name: string;
+  event_date: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  payment_status: 'pending' | 'paid' | 'partial' | 'refunded' | 'unpaid';
+  total_price: number;
+  notes: string | null;
+  created_at: string;
+}
+
+const statusConfig: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'danger'; icon: typeof CheckCircle }> = {
+  pending: { label: 'Pending', variant: 'warning', icon: Clock },
+  confirmed: { label: 'Confirmed', variant: 'success', icon: CheckCircle },
+  completed: { label: 'Completed', variant: 'default', icon: CheckCircle },
+  cancelled: { label: 'Cancelled', variant: 'danger', icon: XCircle },
+};
+
 function DashboardContent() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
@@ -29,6 +55,9 @@ function DashboardContent() {
   const [activeTab, setActiveTab] = useState(tabParam || 'overview');
   const [savedVendors, setSavedVendors] = useState<SavedVendor[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [payingBooking, setPayingBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     if (tabParam) {
@@ -55,6 +84,9 @@ function DashboardContent() {
     if (user && (activeTab === 'saved' || activeTab === 'overview')) {
       fetchSavedVendors();
     }
+    if (user && (activeTab === 'bookings' || activeTab === 'overview')) {
+      fetchBookings();
+    }
   }, [user, activeTab]);
 
   const fetchSavedVendors = async () => {
@@ -69,6 +101,22 @@ function DashboardContent() {
       console.error('Failed to fetch saved vendors:', error);
     } finally {
       setLoadingSaved(false);
+    }
+  };
+
+  const fetchBookings = async () => {
+    if (!user) return;
+    setLoadingBookings(true);
+    try {
+      const response = await fetch(`${API_URL}/bookings/list.php?user_id=${user.id}`);
+      const result = await response.json();
+      if (result.success) {
+        setBookings(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error);
+    } finally {
+      setLoadingBookings(false);
     }
   };
 
@@ -210,14 +258,96 @@ function DashboardContent() {
         {activeTab === 'bookings' && (
           <Card className="p-6">
             <h3 className="text-lg font-semibold text-white mb-4">My Bookings</h3>
-            <div className="text-center py-12 text-gray-400">
-              <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No bookings yet</p>
-              <Button className="mt-4" onClick={() => router.push('/vendors')}>
-                Find Services
-              </Button>
-            </div>
+            {loadingBookings ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-400 mx-auto"></div>
+              </div>
+            ) : bookings.length > 0 ? (
+              <div className="space-y-4">
+                {bookings.map((booking) => {
+                  const config = statusConfig[booking.status] || statusConfig.pending;
+                  const StatusIcon = config.icon;
+                  const isPaid = booking.payment_status === 'paid';
+                  const eventDate = new Date(booking.event_date);
+                  const isUpcoming = eventDate >= new Date();
+                  
+                  return (
+                    <div key={booking.id} className="border border-dark-700 rounded-lg p-4 hover:border-pink-500/30 transition-colors">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Link href={`/vendors/${booking.vendor_id}`} className="text-white font-semibold hover:text-pink-400 transition-colors">
+                              {booking.business_name || booking.vendor_name}
+                            </Link>
+                            <Badge variant={config.variant} className="text-xs">
+                              <StatusIcon className="w-3 h-3 mr-1" />
+                              {config.label}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-400 text-sm">{booking.service_name || 'Service'}</p>
+                          <div className="flex items-center gap-4 mt-2 text-sm">
+                            <span className="flex items-center gap-1 text-gray-400">
+                              <Calendar className="w-4 h-4" />
+                              {eventDate.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                            <span className="text-pink-400 font-semibold">
+                              ₱{Number(booking.total_price).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {!isPaid && booking.status !== 'cancelled' && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => setPayingBooking(booking)}
+                              className="bg-pink-500 hover:bg-pink-600"
+                            >
+                              <CreditCard className="w-4 h-4 mr-1" />
+                              Pay Now
+                            </Button>
+                          )}
+                          {isPaid && (
+                            <Badge variant="success" className="text-xs">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Paid
+                            </Badge>
+                          )}
+                          <Link href={`/vendors/${booking.vendor_id}`}>
+                            <Button variant="outline" size="sm">View Vendor</Button>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-400">
+                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No bookings yet</p>
+                <Button className="mt-4" onClick={() => router.push('/vendors')}>
+                  Find Services
+                </Button>
+              </div>
+            )}
           </Card>
+        )}
+
+        {/* Payment Modal */}
+        {payingBooking && (
+          <PaymentModal
+            isOpen={!!payingBooking}
+            onClose={() => setPayingBooking(null)}
+            bookingId={payingBooking.id}
+            amount={payingBooking.total_price}
+            serviceName={payingBooking.service_name || 'Service'}
+            vendorName={payingBooking.business_name || payingBooking.vendor_name}
+            eventDate={payingBooking.event_date}
+            onPaymentComplete={() => {
+              setPayingBooking(null);
+              fetchBookings();
+            }}
+          />
         )}
 
         {activeTab === 'saved' && (
