@@ -29,11 +29,12 @@ const MIN_DOWNPAYMENT_PERCENT = 5; // Minimum 5% downpayment
 const DEFAULT_DOWNPAYMENT_PERCENT = 50; // Default 50% downpayment
 const PLATFORM_FEE_PERCENT = 5; // 5% platform charge
 
-// Test card numbers for sandbox
+// Test card numbers for sandbox (Luhn-valid)
+// NOTE: These are demo cards - real PayMongo test cards: 4120000000000007 (Visa), 5435930000000039 (MC)
 const TEST_CARDS = {
-  success: '4343 4343 4343 4345',
-  declined: '4444 4444 4444 4442',
-  insufficient: '4000 0000 0000 0002',
+  success: '4242 4242 4242 4242',  // Standard test card (Luhn valid)
+  declined: '4000 0000 0000 0002',  // Test decline card
+  insufficient: '4000 0000 0000 9995', // Insufficient funds test
 };
 
 const PAYMENT_METHODS: { id: PaymentMethod; name: string; icon: typeof Smartphone; description: string; online: boolean }[] = [
@@ -237,17 +238,85 @@ export function PaymentModal({
     }
   };
 
+  // Luhn algorithm to validate card number
+  const validateCardNumber = (number: string): boolean => {
+    const digits = number.replace(/\s/g, '');
+    if (!/^\d{13,19}$/.test(digits)) return false;
+    
+    let sum = 0;
+    let isEven = false;
+    
+    for (let i = digits.length - 1; i >= 0; i--) {
+      let digit = parseInt(digits[i], 10);
+      
+      if (isEven) {
+        digit *= 2;
+        if (digit > 9) digit -= 9;
+      }
+      
+      sum += digit;
+      isEven = !isEven;
+    }
+    
+    return sum % 10 === 0;
+  };
+
+  // Validate expiry date
+  const validateExpiry = (expiry: string): boolean => {
+    const match = expiry.match(/^(\d{2})\/(\d{2})$/);
+    if (!match) return false;
+    
+    const month = parseInt(match[1], 10);
+    const year = parseInt('20' + match[2], 10);
+    
+    if (month < 1 || month > 12) return false;
+    
+    const now = new Date();
+    const expiryDate = new Date(year, month - 1);
+    return expiryDate >= now;
+  };
+
   // Handle card payment submission
   const handleCardPayment = async () => {
+    setError('');
+    
+    // Validate card number using Luhn algorithm
+    if (!validateCardNumber(cardNumber)) {
+      setError('Invalid card number. Please check and try again.');
+      return;
+    }
+    
+    // Validate expiry
+    if (!validateExpiry(cardExpiry)) {
+      setError('Invalid or expired card. Please check the expiry date.');
+      return;
+    }
+    
+    // Validate CVV
+    if (!/^\d{3,4}$/.test(cardCvv)) {
+      setError('Invalid CVV. Must be 3 or 4 digits.');
+      return;
+    }
+    
+    // Validate name
+    if (cardName.trim().length < 2) {
+      setError('Please enter the cardholder name.');
+      return;
+    }
+    
     setIsLoading(true);
     setStep('processing');
     
     try {
+      // NOTE: This is DEMO MODE - simulates payment without real processor
+      // For production, integrate PayMongo's payment intent/source API
+      console.log('[DEMO MODE] Simulating card payment - no real charge');
+      
       // Simulate payment processing delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Generate transaction ID
-      const txnId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      // Generate transaction ID (demo format - real PayMongo would use pi_ or src_ prefix)
+      const txnId = `DEMO-TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       setTransactionId(txnId);
       
       // Update booking payment status
@@ -270,12 +339,12 @@ export function PaymentModal({
         setStep('success');
       } else {
         // If API fails, still show success for demo purposes
-        console.log('Card payment demo mode - showing success');
+        console.log('[DEMO MODE] API failed but showing success for testing');
         setStep('success');
       }
     } catch {
       // For demo, still show success
-      console.log('Card payment demo mode - showing success');
+      console.log('[DEMO MODE] Error occurred but showing success for testing');
       setStep('success');
     } finally {
       setIsLoading(false);
