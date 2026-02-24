@@ -146,29 +146,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $stmt->execute($params);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Get vendor/coordinator info for relevant users
+        // Format and enrich user data
         foreach ($users as &$u) {
+            $u['id'] = (int)$u['id'];
             $u['booking_count'] = (int)($u['booking_count'] ?? 0);
             $u['email_verified'] = (bool)$u['email_verified'];
+            $u['status'] = $u['status'] ?? 'active';
             
+            // Get vendor/coordinator info - wrapped in try/catch
             if ($u['role'] === 'vendor') {
                 try {
-                    $stmt = $pdo->prepare("SELECT business_name, verification_status FROM vendors WHERE user_id = ?");
-                    $stmt->execute([$u['id']]);
-                    $u['vendor'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+                    $vendorStmt = $pdo->prepare("SELECT id, business_name, verification_status FROM vendors WHERE user_id = ? LIMIT 1");
+                    $vendorStmt->execute([$u['id']]);
+                    $vendorData = $vendorStmt->fetch(PDO::FETCH_ASSOC);
+                    $u['vendor'] = $vendorData ?: null;
                 } catch (PDOException $e) {
                     $u['vendor'] = null;
                 }
             } elseif ($u['role'] === 'coordinator') {
                 try {
-                    $stmt = $pdo->prepare("SELECT business_name, verification_status FROM coordinators WHERE user_id = ?");
-                    $stmt->execute([$u['id']]);
-                    $u['coordinator'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+                    $coordStmt = $pdo->prepare("SELECT id, business_name, verification_status FROM coordinators WHERE user_id = ? LIMIT 1");
+                    $coordStmt->execute([$u['id']]);
+                    $coordData = $coordStmt->fetch(PDO::FETCH_ASSOC);
+                    $u['coordinator'] = $coordData ?: null;
                 } catch (PDOException $e) {
                     $u['coordinator'] = null;
                 }
             }
         }
+        unset($u); // break reference
 
         // Get stats
         $stmt = $pdo->query("SELECT role, COUNT(*) as count FROM users WHERE role != 'admin' GROUP BY role");
@@ -206,7 +212,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     } catch (PDOException $e) {
         http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Database error: ' . $e->getMessage(),
+            'users' => [],
+            'pagination' => ['page' => 1, 'limit' => 20, 'total' => 0, 'totalPages' => 0],
+            'stats' => ['byRole' => [], 'byStatus' => ['active' => 0]]
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Error: ' . $e->getMessage(),
+            'users' => [],
+            'pagination' => ['page' => 1, 'limit' => 20, 'total' => 0, 'totalPages' => 0],
+            'stats' => ['byRole' => [], 'byStatus' => ['active' => 0]]
+        ]);
     }
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {

@@ -71,14 +71,26 @@ export default function UsersPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      // API wrapper returns { success, data: { users, pagination, stats } }
-      const data = response?.data || response;
-      if (data?.success !== false) {
-        setUsers(data.users || []);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotal(data.pagination?.total || 0);
-        setStats(data.stats || { byRole: {}, byStatus: {} });
+      
+      console.log('Users API response:', response);
+      
+      // Handle different response structures
+      let userData: any = null;
+      if (response?.data?.users) {
+        userData = response.data;
+      } else if (response?.users) {
+        userData = response;
+      } else if (Array.isArray(response?.data)) {
+        userData = { users: response.data, pagination: { totalPages: 1, total: response.data.length } };
+      }
+      
+      if (userData && userData.users) {
+        setUsers(userData.users);
+        setTotalPages(userData.pagination?.totalPages || 1);
+        setTotal(userData.pagination?.total || userData.users.length);
+        setStats(userData.stats || { byRole: {}, byStatus: {} });
       } else {
+        console.warn('No users data found in response:', response);
         setUsers([]);
         setTotalPages(1);
         setTotal(0);
