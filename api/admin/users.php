@@ -77,16 +77,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $hasSuspendedAt = in_array('suspended_at', $columnsResult);
         $hasSuspendedReason = in_array('suspended_reason', $columnsResult);
         
+        // Check if bookings table exists
+        $hasBookings = false;
+        try {
+            $bookingsCheck = $pdo->query("SHOW TABLES LIKE 'bookings'");
+            $hasBookings = $bookingsCheck->rowCount() > 0;
+        } catch (PDOException $e) {
+            $hasBookings = false;
+        }
+        
         // Build dynamic SELECT
         $statusSelect = $hasStatus ? "u.status" : "'active' as status";
         $suspendedAtSelect = $hasSuspendedAt ? "u.suspended_at" : "NULL as suspended_at";
         $suspendedReasonSelect = $hasSuspendedReason ? "u.suspended_reason" : "NULL as suspended_reason";
+        $bookingCountSelect = $hasBookings ? "(SELECT COUNT(*) FROM bookings WHERE user_id = u.id) as booking_count" : "0 as booking_count";
         
         $sql = "
             SELECT u.id, u.email, u.name, u.role, u.phone, u.avatar, 
                    u.email_verified, $statusSelect, $suspendedAtSelect, $suspendedReasonSelect,
                    u.created_at, u.updated_at,
-                   (SELECT COUNT(*) FROM bookings WHERE user_id = u.id) as booking_count
+                   $bookingCountSelect
             FROM users u
             WHERE u.role != 'admin'
         ";
@@ -138,14 +148,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         // Get vendor/coordinator info for relevant users
         foreach ($users as &$u) {
+            $u['booking_count'] = (int)($u['booking_count'] ?? 0);
+            $u['email_verified'] = (bool)$u['email_verified'];
+            
             if ($u['role'] === 'vendor') {
-                $stmt = $pdo->prepare("SELECT business_name, verification_status, rating, review_count FROM vendors WHERE user_id = ?");
-                $stmt->execute([$u['id']]);
-                $u['vendor'] = $stmt->fetch(PDO::FETCH_ASSOC);
+                try {
+                    $stmt = $pdo->prepare("SELECT business_name, verification_status FROM vendors WHERE user_id = ?");
+                    $stmt->execute([$u['id']]);
+                    $u['vendor'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+                } catch (PDOException $e) {
+                    $u['vendor'] = null;
+                }
             } elseif ($u['role'] === 'coordinator') {
-                $stmt = $pdo->prepare("SELECT business_name, verification_status, rating, review_count FROM coordinators WHERE user_id = ?");
-                $stmt->execute([$u['id']]);
-                $u['coordinator'] = $stmt->fetch(PDO::FETCH_ASSOC);
+                try {
+                    $stmt = $pdo->prepare("SELECT business_name, verification_status FROM coordinators WHERE user_id = ?");
+                    $stmt->execute([$u['id']]);
+                    $u['coordinator'] = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+                } catch (PDOException $e) {
+                    $u['coordinator'] = null;
+                }
             }
         }
 
