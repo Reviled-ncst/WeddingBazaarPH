@@ -178,6 +178,11 @@ $migrations = [
         'file' => __DIR__ . '/../config/reseed_login_attempts.sql',
         'description' => 'Reseed login_attempts with correct status ENUM values'
     ],
+    'add_payment_fields' => [
+        'file' => __DIR__ . '/add_payment_fields.php',
+        'description' => 'Add payment_method, payment_status, transaction_id columns to bookings',
+        'type' => 'php'
+    ],
 ];
 
 // Check if specific migration requested
@@ -240,7 +245,19 @@ try {
         $startTime = microtime(true);
         
         try {
-            $statementsExecuted = executeSqlFile($pdo, $file);
+            // Check if it's a PHP migration or SQL file
+            $migType = $config['type'] ?? 'sql';
+            
+            if ($migType === 'php') {
+                // Run PHP migration by including it
+                ob_start();
+                include $file;
+                $output = ob_get_clean();
+                $statementsExecuted = 1;
+            } else {
+                // Run SQL file
+                $statementsExecuted = executeSqlFile($pdo, $file);
+            }
             
             $executionTime = round((microtime(true) - $startTime) * 1000);
             $totalTime += $executionTime;
