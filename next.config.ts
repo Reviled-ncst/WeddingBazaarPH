@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
       },
+      {
+        protocol: 'https',
+        hostname: '*.railway.app',
+      },
+      {
+        protocol: 'https',
+        hostname: 'weddingbazaarph-testing.up.railway.app',
+      },
     ],
   },
 };

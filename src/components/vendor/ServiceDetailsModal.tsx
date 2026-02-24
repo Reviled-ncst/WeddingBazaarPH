@@ -115,6 +115,8 @@ export function ServiceDetailsModal({ isOpen, onClose, service }: ServiceDetails
                       src={getImageUrl(service.images[currentImageIndex].url)}
                       alt={service.images[currentImageIndex].originalName || service.name}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                     {service.images.length > 1 && (
                       <>

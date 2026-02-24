@@ -77,18 +77,76 @@ for ($i = 0; $i < $fileCount; $i++) {
     }
     
     // Generate unique filename
-    $extension = pathinfo($files['name'][$i], PATHINFO_EXTENSION);
-    $filename = uniqid('service_') . '_' . time() . '.' . $extension;
+    $extension = strtolower(pathinfo($files['name'][$i], PATHINFO_EXTENSION));
+    $filename = uniqid('service_') . '_' . time() . '.jpg'; // Always save as jpg for compression
     $filepath = $uploadDir . $filename;
     
-    if (move_uploaded_file($files['tmp_name'][$i], $filepath)) {
+    // Try to compress and resize image
+    $saved = false;
+    if (extension_loaded('gd')) {
+        try {
+            $sourceImage = null;
+            switch ($mimeType) {
+                case 'image/jpeg':
+                    $sourceImage = imagecreatefromjpeg($files['tmp_name'][$i]);
+                    break;
+                case 'image/png':
+                    $sourceImage = imagecreatefrompng($files['tmp_name'][$i]);
+                    break;
+                case 'image/webp':
+                    $sourceImage = imagecreatefromwebp($files['tmp_name'][$i]);
+                    break;
+                case 'image/gif':
+                    $sourceImage = imagecreatefromgif($files['tmp_name'][$i]);
+                    break;
+            }
+            
+            if ($sourceImage) {
+                // Get original dimensions
+                $origWidth = imagesx($sourceImage);
+                $origHeight = imagesy($sourceImage);
+                
+                // Max dimensions (resize if larger)
+                $maxWidth = 1200;
+                $maxHeight = 800;
+                
+                // Calculate new dimensions maintaining aspect ratio
+                $ratio = min($maxWidth / $origWidth, $maxHeight / $origHeight);
+                if ($ratio < 1) {
+                    $newWidth = (int)($origWidth * $ratio);
+                    $newHeight = (int)($origHeight * $ratio);
+                    
+                    // Create resized image
+                    $resized = imagecreatetruecolor($newWidth, $newHeight);
+                    imagecopyresampled($resized, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight);
+                    imagedestroy($sourceImage);
+                    $sourceImage = $resized;
+                }
+                
+                // Save as JPEG with 80% quality for good balance of quality/size
+                $saved = imagejpeg($sourceImage, $filepath, 80);
+                imagedestroy($sourceImage);
+            }
+        } catch (Exception $e) {
+            // Fall back to raw upload
+        }
+    }
+    
+    // Fallback: just move the file if GD processing failed
+    if (!$saved) {
+        $filename = uniqid('service_') . '_' . time() . '.' . $extension;
+        $filepath = $uploadDir . $filename;
+        $saved = move_uploaded_file($files['tmp_name'][$i], $filepath);
+    }
+    
+    if ($saved) {
         // Use just /uploads/... path - the API URL will be prepended by frontend
         $uploadedImages[] = [
             'url' => '/uploads/services/' . $vendorId . '/' . $filename,
             'filename' => $filename,
             'originalName' => $files['name'][$i],
-            'size' => $files['size'][$i],
-            'mimeType' => $mimeType
+            'size' => filesize($filepath),
+            'mimeType' => 'image/jpeg'
         ];
     } else {
         $errors[] = "Failed to save: " . $files['name'][$i];

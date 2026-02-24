@@ -814,25 +814,39 @@ function VendorDashboardContent() {
                     >
                       <div className="flex">
                         {/* Service Image */}
-                        <div className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 bg-dark-800">
+                        <div className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 bg-dark-800 relative">
                           {service.images && service.images.length > 0 ? (
-                            <img 
-                              src={(() => {
-                                let url = service.images[0].url;
-                                if (url.startsWith('http')) return url;
-                                // Strip /wedding-bazaar-api prefix if present (legacy URLs)
-                                if (url.startsWith('/wedding-bazaar-api')) {
-                                  url = url.replace('/wedding-bazaar-api', '');
-                                }
-                                return `${process.env.NEXT_PUBLIC_API_URL}${url}`;
-                              })()}
-                              alt={service.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                              }}
-                            />
+                            <>
+                              {/* Loading skeleton */}
+                              <div className="absolute inset-0 bg-dark-800 animate-pulse" />
+                              <img 
+                                src={(() => {
+                                  let url = service.images[0].url;
+                                  if (url.startsWith('http')) return url;
+                                  // Strip /wedding-bazaar-api prefix if present (legacy URLs)
+                                  if (url.startsWith('/wedding-bazaar-api')) {
+                                    url = url.replace('/wedding-bazaar-api', '');
+                                  }
+                                  return `${process.env.NEXT_PUBLIC_API_URL}${url}`;
+                                })()}
+                                alt={service.name}
+                                className="w-full h-full object-cover relative z-10 transition-opacity duration-300"
+                                loading="lazy"
+                                decoding="async"
+                                onLoad={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.opacity = '1';
+                                  // Hide the skeleton
+                                  const skeleton = target.previousElementSibling as HTMLElement;
+                                  if (skeleton) skeleton.style.display = 'none';
+                                }}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                                style={{ opacity: 0 }}
+                              />
+                            </>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Package className="w-10 h-10 text-gray-600" />
