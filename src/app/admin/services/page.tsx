@@ -74,10 +74,11 @@ export default function ServicesPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response?.success) {
-        setServices(response.services || []);
-        setTotalPages(response.pagination?.totalPages || 1);
-        setStats(response.stats || { byStatus: {}, featured: 0 });
+      const data = response?.data || response;
+      if (data?.success !== false) {
+        setServices(data.services || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setStats(data.stats || { byStatus: {}, featured: 0 });
       } else {
         setServices([]);
         setTotalPages(1);

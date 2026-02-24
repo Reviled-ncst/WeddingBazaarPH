@@ -75,10 +75,11 @@ export default function ComplaintsPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response?.success) {
-        setComplaints(response.complaints || []);
-        setTotalPages(response.pagination?.totalPages || 1);
-        setStats(response.stats || { byStatus: {}, byPriority: {} });
+      const data = response?.data || response;
+      if (data?.success !== false) {
+        setComplaints(data.complaints || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setStats(data.stats || { byStatus: {}, byPriority: {} });
       } else {
         setComplaints([]);
         setTotalPages(1);

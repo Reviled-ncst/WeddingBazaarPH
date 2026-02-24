@@ -70,10 +70,11 @@ export default function SupportTicketsPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response?.success) {
-        setTickets(response.tickets || []);
-        setTotalPages(response.pagination?.totalPages || 1);
-        setStats(response.stats || { byStatus: {} });
+      const data = response?.data || response;
+      if (data?.success !== false) {
+        setTickets(data.tickets || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setStats(data.stats || { byStatus: {} });
       } else {
         setTickets([]);
         setTotalPages(1);

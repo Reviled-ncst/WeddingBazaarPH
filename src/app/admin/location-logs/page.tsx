@@ -67,11 +67,12 @@ export default function LocationLogsPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response?.success) {
-        setLogs(response.logs || []);
-        setTotalPages(response.pagination?.totalPages || 1);
-        setStats(response.stats || { totalLogs: 0, uniqueCities: 0, topRegions: [] });
-        setRegions(response.regions || []);
+      const data = response?.data || response;
+      if (data?.success !== false) {
+        setLogs(data.logs || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setStats(data.stats || { totalLogs: 0, uniqueCities: 0, topRegions: [] });
+        setRegions(data.regions || []);
       } else {
         setLogs([]);
         setTotalPages(1);

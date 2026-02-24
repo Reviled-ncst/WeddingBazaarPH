@@ -71,11 +71,13 @@ export default function UsersPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response?.success) {
-        setUsers(response.users || []);
-        setTotalPages(response.pagination?.totalPages || 1);
-        setTotal(response.pagination?.total || 0);
-        setStats(response.stats || { byRole: {}, byStatus: {} });
+      // API wrapper returns { success, data: { users, pagination, stats } }
+      const data = response?.data || response;
+      if (data?.success !== false) {
+        setUsers(data.users || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotal(data.pagination?.total || 0);
+        setStats(data.stats || { byRole: {}, byStatus: {} });
       } else {
         setUsers([]);
         setTotalPages(1);

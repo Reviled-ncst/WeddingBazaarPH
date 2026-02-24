@@ -74,12 +74,13 @@ export default function ActivityLogsPage() {
         page: currentPage,
         limit: 20
       }) as any;
-      if (response?.success) {
-        setLogs(response.logs || []);
-        setTotalPages(response.pagination?.totalPages || 1);
-        setTotal(response.pagination?.total || 0);
-        if (response.filters?.actionTypes) {
-          setActionTypes(response.filters.actionTypes);
+      const data = response?.data || response;
+      if (data?.success !== false) {
+        setLogs(data.logs || []);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotal(data.pagination?.total || 0);
+        if (data.filters?.actionTypes) {
+          setActionTypes(data.filters.actionTypes);
         }
       } else {
         setLogs([]);
