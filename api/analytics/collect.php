@@ -136,6 +136,13 @@ function getLocationFromIP($ip) {
 // Cache location lookup to avoid rate limiting
 $locationData = getLocationFromIP($ipAddress);
 
+// Skip tracking for admin pages - only track user-facing pages
+$pagePath = $input['path'] ?? '/';
+if (strpos($pagePath, '/admin') === 0) {
+    echo json_encode(['success' => true, 'message' => 'Admin pages not tracked']);
+    exit;
+}
+
 try {
     switch ($type) {
         case 'pageview':

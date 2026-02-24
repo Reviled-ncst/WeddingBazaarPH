@@ -136,8 +136,8 @@ try {
     $stmt->execute($params);
     $totalClicks = (int)$stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    // Top pages
-    $pageWhereClause = "WHERE created_at >= ?";
+    // Top pages - exclude admin pages (only track user-facing pages)
+    $pageWhereClause = "WHERE created_at >= ? AND page_path NOT LIKE '/admin%'";
     $pageParams = [$startDate];
     
     $stmt = $pdo->prepare("
