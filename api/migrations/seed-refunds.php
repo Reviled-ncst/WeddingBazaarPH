@@ -89,18 +89,9 @@ try {
         $results[] = "Added appealed_at column";
     }
     
-    // Update status enum - must include existing values to avoid data truncation
-    try {
-        // First, update enum to include all values (old and new)
-        $pdo->exec("ALTER TABLE refund_requests MODIFY COLUMN status ENUM('pending', 'pending_vendor', 'pending_admin', 'vendor_rejected', 'vendor_accepted', 'appealed', 'approved', 'rejected', 'processed') DEFAULT 'pending_vendor'");
-        
-        // Convert old 'pending' status to 'pending_vendor'
-        $pdo->exec("UPDATE refund_requests SET status = 'pending_vendor' WHERE status = 'pending'");
-        
-        $results[] = "Updated status enum and migrated old values";
-    } catch (Exception $e) {
-        $results[] = "Status enum update note: " . $e->getMessage();
-    }
+    // Skip enum update - existing enum already has all needed values:
+    // 'pending','pending_vendor','pending_admin','vendor_rejected','appealed','approved','rejected','processed'
+    $results[] = "Using existing status enum";
     
     // Get bookings that don't have refund requests yet
     // Include bookings with any payment (paid, partial) or confirmed status
