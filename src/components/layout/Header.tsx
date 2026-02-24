@@ -73,24 +73,13 @@ function HeaderContent() {
       return [{ href: '/', label: 'Home', icon: Home }];
     }
     
+    // Vendors and coordinators use in-dashboard tabs, so no header nav needed
     if (user.role === 'vendor') {
-      return [
-        { href: '/vendor-dashboard', label: 'Overview', icon: BarChart3 },
-        { href: '/vendor-dashboard?tab=bookings', label: 'Bookings', icon: Calendar },
-        { href: '/vendor-dashboard?tab=services', label: 'Services', icon: Package },
-        { href: '/vendor-dashboard?tab=messages', label: 'Messages', icon: MessageSquare },
-        { href: '/vendor-dashboard?tab=reviews', label: 'Reviews', icon: Star },
-      ];
+      return [];
     }
     
     if (user.role === 'coordinator') {
-      return [
-        { href: '/coordinator-dashboard', label: 'Overview', icon: BarChart3 },
-        { href: '/coordinator-dashboard?tab=weddings', label: 'Weddings', icon: CalendarCheck },
-        { href: '/coordinator-dashboard?tab=tasks', label: 'Tasks', icon: ClipboardList },
-        { href: '/coordinator-dashboard?tab=messages', label: 'Messages', icon: MessageSquare },
-        { href: '/coordinator-dashboard?tab=reviews', label: 'Reviews', icon: Star },
-      ];
+      return [];
     }
     
     // Couple (individual)
