@@ -3,7 +3,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: 'individual' | 'vendor' | 'coordinator' | 'admin';
+  role: 'individual' | 'couple' | 'vendor' | 'coordinator' | 'admin';
   phone?: string;
   avatar?: string;
   email_verified?: boolean;
