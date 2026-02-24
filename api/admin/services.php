@@ -131,8 +131,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $categoryStats[$row['category']] = (int)$row['count'];
         }
 
-        $stmt = $pdo->query("SELECT COUNT(*) as total, SUM(is_active) as active FROM services");
+        $stmt = $pdo->query("SELECT COUNT(*) as total, SUM(is_active) as active, SUM(is_featured) as featured FROM services");
         $totals = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $activeCount = (int)($totals['active'] ?? 0);
+        $inactiveCount = (int)$totals['total'] - $activeCount;
+        $featuredCount = (int)($totals['featured'] ?? 0);
 
         echo json_encode([
             'success' => true,
@@ -145,8 +149,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ],
             'stats' => [
                 'total' => (int)$totals['total'],
-                'active' => (int)$totals['active'],
-                'inactive' => (int)$totals['total'] - (int)$totals['active'],
+                'byStatus' => [
+                    'active' => $activeCount,
+                    'inactive' => $inactiveCount,
+                    'pending' => 0,
+                    'flagged' => 0
+                ],
+                'featured' => $featuredCount,
                 'byCategory' => $categoryStats
             ]
         ]);
