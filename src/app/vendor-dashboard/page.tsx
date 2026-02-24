@@ -12,6 +12,7 @@ import { AddServiceModal, ServiceFormData, PricingItem, AddOn, ServiceImage } fr
 import { ServiceDetailsModal } from '@/components/vendor/ServiceDetailsModal';
 import { MessagesTab } from '@/components/messaging/MessagesTab';
 import { AvailabilityTab } from '@/components/vendor/AvailabilityTab';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
@@ -367,26 +368,39 @@ function VendorDashboardContent() {
         const result = await response.json();
         const finalServiceId = isEditing ? serviceId : result.service_id;
         
-        // Upload images if any
+        // Upload images to Cloudinary if any
         let uploadedImages: ServiceImage[] = [];
         if (newImageFiles.length > 0 && finalServiceId) {
-          const formData = new FormData();
-          formData.append('vendor_id', vendorId.toString());
-          formData.append('service_id', finalServiceId.toString());
-          newImageFiles.forEach(img => {
+          for (const img of newImageFiles) {
             if (img.file) {
-              formData.append('images[]', img.file);
+              try {
+                const result = await uploadToCloudinary(img.file, {
+                  folder: `wedding-bazaar/services/${vendorId}`,
+                  tags: ['service', `vendor-${vendorId}`, `service-${finalServiceId}`],
+                });
+                uploadedImages.push({
+                  url: result.secure_url,
+                  filename: result.public_id,
+                  originalName: img.file.name,
+                });
+              } catch (error) {
+                console.error('Cloudinary upload error:', error);
+              }
             }
-          });
+          }
           
-          const uploadResponse = await fetch(`${API_URL}/services/upload-images.php`, {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (uploadResponse.ok) {
-            const uploadResult = await uploadResponse.json();
-            uploadedImages = uploadResult.images || [];
+          // Update service with new images in database
+          if (uploadedImages.length > 0) {
+            const allImages = [...existingImages, ...uploadedImages];
+            await fetch(`${API_URL}/services/update.php`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: finalServiceId,
+                vendor_id: vendorId,
+                images: allImages,
+              }),
+            });
           }
         }
         
