@@ -45,37 +45,75 @@ if (!$userId) {
 try {
     $pdo = getDBConnection();
     
-    // Get unique conversations with the other party's info and last message
+    // Step 1: Get distinct conversation partners
     $stmt = $pdo->prepare("
-        SELECT 
+        SELECT DISTINCT
             CASE 
-                WHEN m.sender_id = ? THEN m.receiver_id 
-                ELSE m.sender_id 
-            END as other_user_id,
-            u.name as other_user_name,
-            u.role as other_user_role,
-            COALESCE(v.business_name, u.name) as display_name,
-            v.category as vendor_category,
-            (SELECT content FROM messages m2 
-             WHERE (m2.sender_id = ? AND m2.receiver_id = other_user_id) 
-                OR (m2.receiver_id = ? AND m2.sender_id = other_user_id)
-             ORDER BY m2.created_at DESC LIMIT 1) as last_message,
-            (SELECT created_at FROM messages m3 
-             WHERE (m3.sender_id = ? AND m3.receiver_id = other_user_id) 
-                OR (m3.receiver_id = ? AND m3.sender_id = other_user_id)
-             ORDER BY m3.created_at DESC LIMIT 1) as last_message_time,
-            (SELECT COUNT(*) FROM messages m4 
-             WHERE m4.sender_id = other_user_id AND m4.receiver_id = ? AND m4.is_read = 0) as unread_count
-        FROM messages m
-        JOIN users u ON u.id = CASE WHEN m.sender_id = ? THEN m.receiver_id ELSE m.sender_id END
-        LEFT JOIN vendors v ON v.user_id = u.id
-        WHERE m.sender_id = ? OR m.receiver_id = ?
-        GROUP BY other_user_id
-        ORDER BY last_message_time DESC
+                WHEN sender_id = ? THEN receiver_id 
+                ELSE sender_id 
+            END as other_user_id
+        FROM messages
+        WHERE sender_id = ? OR receiver_id = ?
     ");
+    $stmt->execute([$userId, $userId, $userId]);
+    $partnerIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
     
-    $stmt->execute([$userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId]);
-    $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $conversations = [];
+    
+    foreach ($partnerIds as $partnerId) {
+        // Get partner info
+        $stmt = $pdo->prepare("
+            SELECT 
+                u.id,
+                u.name,
+                u.role,
+                COALESCE(v.business_name, u.name) as display_name,
+                v.category as vendor_category
+            FROM users u
+            LEFT JOIN vendors v ON v.user_id = u.id
+            WHERE u.id = ?
+        ");
+        $stmt->execute([$partnerId]);
+        $partner = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$partner) continue;
+        
+        // Get last message
+        $stmt = $pdo->prepare("
+            SELECT content, created_at, sender_id
+            FROM messages
+            WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+            ORDER BY created_at DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$userId, $partnerId, $partnerId, $userId]);
+        $lastMessage = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Get unread count
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as count
+            FROM messages
+            WHERE sender_id = ? AND receiver_id = ? AND is_read = 0
+        ");
+        $stmt->execute([$partnerId, $userId]);
+        $unreadCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+        
+        $conversations[] = [
+            'other_user_id' => (int)$partner['id'],
+            'other_user_name' => $partner['name'],
+            'other_user_role' => $partner['role'],
+            'display_name' => $partner['display_name'],
+            'vendor_category' => $partner['vendor_category'],
+            'last_message' => $lastMessage['content'] ?? null,
+            'last_message_time' => $lastMessage['created_at'] ?? null,
+            'unread_count' => (int)$unreadCount
+        ];
+    }
+    
+    // Sort by last message time
+    usort($conversations, function($a, $b) {
+        return strtotime($b['last_message_time'] ?? '1970-01-01') - strtotime($a['last_message_time'] ?? '1970-01-01');
+    });
     
     echo json_encode([
         'success' => true,
