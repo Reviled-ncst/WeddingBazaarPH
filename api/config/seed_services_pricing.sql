@@ -169,6 +169,7 @@ SET
     ),
     details = JSON_OBJECT(
         'minimum_pax', 50,
+        'capacity', 300,
         'courses', 7,
         'buffet_style', true,
         'plated_service', false,

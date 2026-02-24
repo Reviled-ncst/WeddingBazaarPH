@@ -530,17 +530,31 @@ export function BookingModal({
                     <label className="block text-gray-300 text-sm font-medium mb-2">
                       <Users className="w-4 h-4 inline mr-2" />
                       Expected Guest Count
+                      {service.details?.capacity && (
+                        <span className="text-gray-500 font-normal ml-2">
+                          (max {service.details.capacity} guests)
+                        </span>
+                      )}
                     </label>
                     <input
                       type="number"
                       value={guestCount}
-                      onChange={(e) => setGuestCount(e.target.value ? parseInt(e.target.value) : '')}
-                      placeholder="e.g., 100"
+                      onChange={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : '';
+                        const maxCapacity = service.details?.capacity ? Number(service.details.capacity) : 2000;
+                        if (val === '' || (typeof val === 'number' && val >= 1 && val <= maxCapacity)) {
+                          setGuestCount(val);
+                        }
+                      }}
+                      placeholder={service.details?.capacity ? `1 - ${service.details.capacity}` : "e.g., 100"}
                       min={1}
+                      max={service.details?.capacity ? Number(service.details.capacity) : 2000}
                       className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
                     />
                     <p className="text-gray-500 text-xs mt-1">
-                      This helps the vendor prepare appropriately for your event
+                      {service.details?.capacity 
+                        ? `This service can accommodate up to ${service.details.capacity} guests`
+                        : 'This helps the vendor prepare appropriately for your event'}
                     </p>
                   </div>
 
