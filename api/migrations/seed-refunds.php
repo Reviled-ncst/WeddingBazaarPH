@@ -195,59 +195,63 @@ try {
     ");
     
     $created = [];
+    $errors = [];
     foreach ($bookings as $index => $booking) {
         if ($index >= count($scenarios)) break;
         
-        $scenario = $scenarios[$index];
-        // Use amount_paid if > 0, otherwise use total_price, fallback to random amount
-        $amountPaid = floatval($booking['amount_paid'] ?? 0);
-        $totalPrice = floatval($booking['total_price'] ?? 0);
-        $amount = $amountPaid > 0 ? $amountPaid : ($totalPrice > 0 ? $totalPrice : rand(5000, 50000));
-        
-        // Calculate timestamps
-        $createdAt = date('Y-m-d H:i:s', strtotime('-' . (10 - $index) . ' days'));
-        $vendorRespondedAt = $scenario['vendor_notes'] ? date('Y-m-d H:i:s', strtotime($createdAt . ' +1 day')) : null;
-        $appealedAt = $scenario['appeal_reason'] ? date('Y-m-d H:i:s', strtotime($createdAt . ' +2 days')) : null;
-        $processedAt = in_array($scenario['status'], ['approved', 'rejected', 'processed']) 
-            ? date('Y-m-d H:i:s', strtotime($createdAt . ' +3 days')) 
-            : null;
-        $processedBy = $processedAt ? $adminId : null;
-        
-        $insertStmt->execute([
-            $booking['id'],
-            $booking['user_id'],
-            $booking['vendor_id'],
-            $amount,
-            $scenario['reason'],
-            $scenario['status'],
-            $scenario['vendor_notes'],
-            $vendorRespondedAt,
-            $scenario['appeal_reason'],
-            $appealedAt,
-            $scenario['admin_notes'],
-            $processedBy,
-            $processedAt,
-            $createdAt
-        ]);
-        
-        $refundId = $pdo->lastInsertId();
-        
-        // Update booking status for certain refund statuses
-        if (in_array($scenario['status'], ['pending_vendor', 'pending_admin', 'appealed'])) {
-            $pdo->prepare("UPDATE bookings SET status = 'refund_requested' WHERE id = ?")->execute([$booking['id']]);
-        } elseif ($scenario['status'] === 'processed' || $scenario['status'] === 'approved') {
-            $pdo->prepare("UPDATE bookings SET status = 'cancelled', payment_status = 'refunded' WHERE id = ?")->execute([$booking['id']]);
-        } elseif ($scenario['status'] === 'rejected') {
-            $pdo->prepare("UPDATE bookings SET status = 'confirmed' WHERE id = ?")->execute([$booking['id']]);
+        try {
+            $scenario = $scenarios[$index];
+            // Use amount_paid if > 0, otherwise use total_price, fallback to random amount
+            $amountPaid = floatval($booking['amount_paid'] ?? 0);
+            $totalPrice = floatval($booking['total_price'] ?? 0);
+            $amount = $amountPaid > 0 ? $amountPaid : ($totalPrice > 0 ? $totalPrice : rand(5000, 50000));
+            
+            // Calculate timestamps
+            $createdAt = date('Y-m-d H:i:s', strtotime('-' . (10 - $index) . ' days'));
+            $vendorRespondedAt = $scenario['vendor_notes'] ? date('Y-m-d H:i:s', strtotime($createdAt . ' +1 day')) : null;
+            $appealedAt = $scenario['appeal_reason'] ? date('Y-m-d H:i:s', strtotime($createdAt . ' +2 days')) : null;
+            $processedAt = in_array($scenario['status'], ['approved', 'rejected', 'processed']) 
+                ? date('Y-m-d H:i:s', strtotime($createdAt . ' +3 days')) 
+                : null;
+            $processedBy = $processedAt ? $adminId : null;
+            
+            $insertStmt->execute([
+                $booking['id'],
+                $booking['user_id'],
+                $booking['vendor_id'],
+                $amount,
+                $scenario['reason'],
+                $scenario['status'],
+                $scenario['vendor_notes'],
+                $vendorRespondedAt,
+                $scenario['appeal_reason'],
+                $appealedAt,
+                $scenario['admin_notes'],
+                $processedBy,
+                $processedAt,
+                $createdAt
+            ]);
+            
+            $refundId = $pdo->lastInsertId();
+            
+            // Update booking status - skip for now to avoid status enum issues
+            // We'll just track the refund without changing booking status
+            
+            $created[] = [
+                'refund_id' => $refundId,
+                'booking_id' => $booking['id'],
+                'vendor' => $booking['vendor_name'],
+                'amount' => $amount,
+                'status' => $scenario['status']
+            ];
+        } catch (Exception $e) {
+            $errors[] = [
+                'booking_id' => $booking['id'],
+                'scenario_index' => $index,
+                'status' => $scenario['status'] ?? 'unknown',
+                'error' => $e->getMessage()
+            ];
         }
-        
-        $created[] = [
-            'refund_id' => $refundId,
-            'booking_id' => $booking['id'],
-            'vendor' => $booking['vendor_name'],
-            'amount' => $amount,
-            'status' => $scenario['status']
-        ];
     }
     
     // Get counts by status
@@ -267,6 +271,7 @@ try {
         'available_bookings' => count($bookings),
         'setup_results' => $results,
         'created' => $created,
+        'errors' => $errors,
         'counts_by_status' => $counts
     ], JSON_PRETTY_PRINT);
     
