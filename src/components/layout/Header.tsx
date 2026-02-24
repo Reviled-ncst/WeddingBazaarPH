@@ -21,6 +21,9 @@ function HeaderContent() {
   const searchParams = useSearchParams();
   const currentTab = searchParams.get('tab');
 
+  // Hide header on admin pages (admin has its own layout with sidebar and header)
+  const isAdminPage = pathname.startsWith('/admin');
+  
   // Check if a nav link is active (handles both pathname and tab params)
   const isLinkActive = (href: string) => {
     const [linkPath, linkQuery] = href.split('?');
@@ -55,7 +58,7 @@ function HeaderContent() {
 
   // For logged-in couples, Home goes to discover page with both services and coordinators
   const getHomeLink = () => {
-    if (user && user.role === 'individual') {
+    if (user && (user.role === 'individual' || user.role === 'couple')) {
       return '/discover';
     }
     if (user && user.role === 'vendor') {
@@ -63,6 +66,9 @@ function HeaderContent() {
     }
     if (user && user.role === 'coordinator') {
       return '/coordinator-dashboard';
+    }
+    if (user && user.role === 'admin') {
+      return '/admin';
     }
     return '/';
   };
@@ -73,12 +79,8 @@ function HeaderContent() {
       return [{ href: '/', label: 'Home', icon: Home }];
     }
     
-    // Vendors and coordinators use in-dashboard tabs, so no header nav needed
-    if (user.role === 'vendor') {
-      return [];
-    }
-    
-    if (user.role === 'coordinator') {
+    // Vendors, coordinators, and admins use in-dashboard navigation, so no header nav needed
+    if (user.role === 'vendor' || user.role === 'coordinator' || user.role === 'admin') {
       return [];
     }
     
@@ -141,6 +143,11 @@ function HeaderContent() {
     if (user.role === 'coordinator') return '/coordinator-dashboard';
     return '/dashboard';
   };
+
+  // Admin has its own layout with sidebar - don't show global header
+  if (isAdminPage) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-dark-950/90 backdrop-blur-lg border-b border-dark-800">
