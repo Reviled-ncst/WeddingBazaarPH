@@ -44,6 +44,22 @@ interface VendorBooking {
   created_at: string;
 }
 
+interface VendorRefundRequest {
+  id: number;
+  booking_id: number;
+  user_id: number;
+  amount: number;
+  reason: string | null;
+  status: 'pending_vendor' | 'pending_admin' | 'vendor_rejected' | 'appealed' | 'approved' | 'rejected' | 'processed';
+  vendor_notes: string | null;
+  created_at: string;
+  // Joined data
+  user_name?: string;
+  user_email?: string;
+  service_name?: string;
+  event_date?: string;
+}
+
 function VendorDashboardContent() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
@@ -59,6 +75,12 @@ function VendorDashboardContent() {
   const [verificationStatus, setVerificationStatus] = useState<'unverified' | 'pending' | 'verified' | 'rejected'>('unverified');
   const [bookings, setBookings] = useState<VendorBooking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  
+  // Refund management state
+  const [refundRequests, setRefundRequests] = useState<VendorRefundRequest[]>([]);
+  const [refundsLoading, setRefundsLoading] = useState(false);
+  const [processingRefundId, setProcessingRefundId] = useState<number | null>(null);
+  const [refundNotes, setRefundNotes] = useState<Record<number, string>>({});
   
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -151,6 +173,75 @@ function VendorDashboardContent() {
       fetchBookings();
     }
   }, [vendorId]);
+
+  // Fetch refund requests when vendor ID is available
+  useEffect(() => {
+    const fetchRefunds = async () => {
+      if (!vendorId) return;
+      setRefundsLoading(true);
+      try {
+        const response = await fetch(`${API_URL}/payments/refund.php?vendor_id=${vendorId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setRefundRequests(result.data || []);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching refunds:', error);
+      } finally {
+        setRefundsLoading(false);
+      }
+    };
+
+    if (vendorId) {
+      fetchRefunds();
+    }
+  }, [vendorId]);
+
+  // Handle vendor refund accept/reject
+  const handleRefundAction = async (refundId: number, action: 'vendor_accept' | 'vendor_reject') => {
+    if (!vendorId) return;
+    
+    const notes = refundNotes[refundId] || '';
+    if (action === 'vendor_reject' && !notes.trim()) {
+      alert('Please provide a reason for rejecting the refund');
+      return;
+    }
+    
+    setProcessingRefundId(refundId);
+    try {
+      const response = await fetch(`${API_URL}/payments/refund.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          refund_id: refundId,
+          vendor_id: vendorId,
+          notes
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Refresh refunds list
+        const res = await fetch(`${API_URL}/payments/refund.php?vendor_id=${vendorId}`);
+        const data = await res.json();
+        if (data.success) {
+          setRefundRequests(data.data || []);
+        }
+        alert(action === 'vendor_accept' ? 'Refund accepted and forwarded to admin' : 'Refund rejected');
+      } else {
+        alert(result.message || 'Failed to process refund');
+      }
+    } catch (error) {
+      console.error('Error processing refund:', error);
+      alert('Network error. Please try again.');
+    } finally {
+      setProcessingRefundId(null);
+    }
+  };
 
   // Open confirm dialog for booking action
   const openBookingConfirmDialog = (booking: VendorBooking, action: 'confirm' | 'decline' | 'complete') => {
@@ -409,6 +500,7 @@ function VendorDashboardContent() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
+    { id: 'refunds', label: 'Refunds', icon: DollarSign },
     { id: 'availability', label: 'Availability', icon: Clock },
     { id: 'services', label: 'Services', icon: Package },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
@@ -734,6 +826,181 @@ function VendorDashboardContent() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Refunds Tab */}
+        {activeTab === 'refunds' && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-white">Refund Requests</h3>
+                <Badge variant="warning">
+                  {refundRequests.filter(r => r.status === 'pending_vendor').length} Pending
+                </Badge>
+              </div>
+
+              {refundsLoading ? (
+                <div className="text-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-pink-400 mx-auto" />
+                </div>
+              ) : refundRequests.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No refund requests</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Pending Vendor Action */}
+                  {refundRequests.filter(r => r.status === 'pending_vendor').length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-yellow-400 mb-3 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        Requires Your Action ({refundRequests.filter(r => r.status === 'pending_vendor').length})
+                      </h4>
+                      <div className="space-y-4">
+                        {refundRequests.filter(r => r.status === 'pending_vendor').map((refund) => (
+                          <Card key={refund.id} className="p-4 border-yellow-500/30 bg-yellow-500/5">
+                            <div className="flex flex-col gap-4">
+                              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h5 className="font-semibold text-white">{refund.service_name}</h5>
+                                    <Badge variant="warning">Pending Review</Badge>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                      <User className="w-4 h-4" />
+                                      {refund.user_name}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                      <Mail className="w-4 h-4" />
+                                      {refund.user_email}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                      <Calendar className="w-4 h-4" />
+                                      {refund.event_date ? new Date(refund.event_date).toLocaleDateString('en-PH') : 'N/A'}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-pink-400 font-semibold">
+                                      <DollarSign className="w-4 h-4" />
+                                      ₱{Number(refund.amount).toLocaleString()}
+                                    </div>
+                                  </div>
+                                  {refund.reason && (
+                                    <div className="mt-3 p-3 bg-dark-800 rounded-lg">
+                                      <p className="text-xs text-gray-500 mb-1">Customer&apos;s reason:</p>
+                                      <p className="text-gray-300 text-sm">{refund.reason}</p>
+                                    </div>
+                                  )}
+                                  <p className="text-xs text-gray-500 mt-2">
+                                    Requested {new Date(refund.created_at).toLocaleDateString('en-PH')}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="border-t border-dark-700 pt-4">
+                                <label className="block text-sm text-gray-400 mb-2">
+                                  Your response (required for rejection):
+                                </label>
+                                <textarea
+                                  value={refundNotes[refund.id] || ''}
+                                  onChange={(e) => setRefundNotes(prev => ({ ...prev, [refund.id]: e.target.value }))}
+                                  placeholder="Add notes about your decision..."
+                                  className="w-full bg-dark-800 border border-dark-700 rounded-lg p-3 text-white placeholder-gray-500 resize-none mb-3"
+                                  rows={2}
+                                />
+                                <div className="flex gap-2">
+                                  <Button 
+                                    size="sm"
+                                    onClick={() => handleRefundAction(refund.id, 'vendor_accept')}
+                                    disabled={processingRefundId === refund.id}
+                                    className="bg-emerald-500 hover:bg-emerald-600"
+                                  >
+                                    {processingRefundId === refund.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                    ) : (
+                                      <CheckCircle className="w-4 h-4 mr-1" />
+                                    )}
+                                    Accept Refund
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleRefundAction(refund.id, 'vendor_reject')}
+                                    disabled={processingRefundId === refund.id}
+                                    className="text-red-400 border-red-400/50 hover:bg-red-400/10"
+                                  >
+                                    {processingRefundId === refund.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                    ) : (
+                                      <XCircle className="w-4 h-4 mr-1" />
+                                    )}
+                                    Reject
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Processing/Completed Refunds */}
+                  {refundRequests.filter(r => r.status !== 'pending_vendor').length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-400 mb-3">
+                        Other Requests ({refundRequests.filter(r => r.status !== 'pending_vendor').length})
+                      </h4>
+                      <div className="space-y-3">
+                        {refundRequests.filter(r => r.status !== 'pending_vendor').map((refund) => {
+                          const statusConfig: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'danger' }> = {
+                            pending_admin: { label: 'Admin Processing', variant: 'warning' },
+                            vendor_rejected: { label: 'You Rejected', variant: 'danger' },
+                            appealed: { label: 'Customer Appealed', variant: 'warning' },
+                            approved: { label: 'Approved', variant: 'success' },
+                            rejected: { label: 'Admin Rejected', variant: 'danger' },
+                            processed: { label: 'Refunded', variant: 'success' },
+                          };
+                          const config = statusConfig[refund.status] || { label: refund.status, variant: 'default' as const };
+                          
+                          return (
+                            <Card key={refund.id} className="p-4 opacity-80">
+                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h5 className="font-semibold text-white">{refund.service_name}</h5>
+                                    <Badge variant={config.variant}>{config.label}</Badge>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                      <User className="w-4 h-4" />
+                                      {refund.user_name}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                      <DollarSign className="w-4 h-4" />
+                                      ₱{Number(refund.amount).toLocaleString()}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-500">
+                                      {new Date(refund.created_at).toLocaleDateString('en-PH')}
+                                    </div>
+                                  </div>
+                                  {refund.status === 'appealed' && (
+                                    <div className="mt-2 p-2 bg-yellow-500/10 rounded text-xs text-yellow-400">
+                                      Customer has appealed your decision. Admin will review.
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
           </div>
         )}
 

@@ -34,10 +34,22 @@ interface Booking {
   vendor_name: string;
   business_name: string;
   event_date: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'refund_requested';
   payment_status: 'pending' | 'paid' | 'partial' | 'refunded' | 'unpaid';
   total_price: number;
   notes: string | null;
+  created_at: string;
+}
+
+interface RefundRequest {
+  id: number;
+  booking_id: number;
+  status: 'pending_vendor' | 'pending_admin' | 'vendor_rejected' | 'appealed' | 'approved' | 'rejected' | 'processed';
+  amount: number;
+  reason: string | null;
+  vendor_notes: string | null;
+  appeal_reason: string | null;
+  admin_notes: string | null;
   created_at: string;
 }
 
@@ -46,6 +58,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'succes
   confirmed: { label: 'Confirmed', variant: 'success', icon: CheckCircle },
   completed: { label: 'Completed', variant: 'default', icon: CheckCircle },
   cancelled: { label: 'Cancelled', variant: 'danger', icon: XCircle },
+  refund_requested: { label: 'Refund Requested', variant: 'warning', icon: RotateCcw },
 };
 
 function DashboardContent() {
@@ -64,6 +77,12 @@ function DashboardContent() {
   const [refundLoading, setRefundLoading] = useState(false);
   const [refundError, setRefundError] = useState('');
   const [messagingVendor, setMessagingVendor] = useState<{ id: number; name: string } | null>(null);
+  // Refund workflow states
+  const [refundRequests, setRefundRequests] = useState<Record<number, RefundRequest>>({});
+  const [appealingRefund, setAppealingRefund] = useState<RefundRequest | null>(null);
+  const [appealReason, setAppealReason] = useState('');
+  const [appealLoading, setAppealLoading] = useState(false);
+  const [appealError, setAppealError] = useState('');
 
   useEffect(() => {
     if (tabParam) {
@@ -114,10 +133,25 @@ function DashboardContent() {
     if (!user) return;
     setLoadingBookings(true);
     try {
-      const response = await fetch(`${API_URL}/bookings/list.php?user_id=${user.id}`);
-      const result = await response.json();
-      if (result.success) {
-        setBookings(result.data);
+      const [bookingsRes, refundsRes] = await Promise.all([
+        fetch(`${API_URL}/bookings/list.php?user_id=${user.id}`),
+        fetch(`${API_URL}/payments/refund.php?user_id=${user.id}`)
+      ]);
+      
+      const bookingsResult = await bookingsRes.json();
+      const refundsResult = await refundsRes.json();
+      
+      if (bookingsResult.success) {
+        setBookings(bookingsResult.data);
+      }
+      
+      if (refundsResult.success && refundsResult.data) {
+        // Map refunds by booking_id for easy lookup
+        const refundMap: Record<number, RefundRequest> = {};
+        refundsResult.data.forEach((refund: RefundRequest) => {
+          refundMap[refund.booking_id] = refund;
+        });
+        setRefundRequests(refundMap);
       }
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
@@ -147,10 +181,10 @@ function DashboardContent() {
       const result = await response.json();
       
       if (result.success) {
-        alert('Refund request submitted! We\'ll review it within 2-3 business days.');
+        alert('Refund request submitted! The vendor will review your request.');
         setRefundingBooking(null);
         setRefundReason('');
-        fetchBookings(); // Refresh to show updated status
+        fetchBookings();
       } else {
         setRefundError(result.message || 'Failed to submit refund request');
       }
@@ -160,6 +194,55 @@ function DashboardContent() {
     } finally {
       setRefundLoading(false);
     }
+  };
+
+  const handleAppeal = async () => {
+    if (!appealingRefund || !user) return;
+    
+    setAppealLoading(true);
+    setAppealError('');
+    
+    try {
+      const response = await fetch(`${API_URL}/payments/refund.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'appeal',
+          refund_id: appealingRefund.id,
+          user_id: user.id,
+          appeal_reason: appealReason
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('Appeal submitted! Our admin team will review your request.');
+        setAppealingRefund(null);
+        setAppealReason('');
+        fetchBookings();
+      } else {
+        setAppealError(result.message || 'Failed to submit appeal');
+      }
+    } catch (error) {
+      console.error('Appeal error:', error);
+      setAppealError('Network error. Please try again.');
+    } finally {
+      setAppealLoading(false);
+    }
+  };
+
+  const getRefundStatusBadge = (refund: RefundRequest) => {
+    const configs: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'danger'; description: string }> = {
+      pending_vendor: { label: 'Awaiting Vendor', variant: 'warning', description: 'Waiting for vendor response' },
+      pending_admin: { label: 'Processing', variant: 'warning', description: 'Vendor approved, admin processing' },
+      vendor_rejected: { label: 'Vendor Rejected', variant: 'danger', description: 'You can appeal this decision' },
+      appealed: { label: 'Appeal Pending', variant: 'warning', description: 'Admin reviewing your appeal' },
+      approved: { label: 'Approved', variant: 'success', description: 'Refund approved, processing payment' },
+      rejected: { label: 'Rejected', variant: 'danger', description: 'Refund request was denied' },
+      processed: { label: 'Refunded', variant: 'success', description: 'Refund completed' },
+    };
+    return configs[refund.status] || { label: refund.status, variant: 'default' as const, description: '' };
   };
 
   const handleUnsaveVendor = async (vendorId: number) => {
@@ -348,13 +431,13 @@ function DashboardContent() {
                               Pay Now
                             </Button>
                           )}
-                          {isPaid && booking.payment_status !== 'refunded' && (
+                          {isPaid && booking.payment_status !== 'refunded' && !refundRequests[booking.id] && (
                             <>
                               <Badge variant="success" className="text-xs">
                                 <CheckCircle className="w-3 h-3 mr-1" />
                                 Paid
                               </Badge>
-                              {booking.status !== 'completed' && (
+                              {booking.status !== 'completed' && booking.status !== 'refund_requested' && (
                                 <Button 
                                   size="sm" 
                                   variant="outline"
@@ -366,6 +449,41 @@ function DashboardContent() {
                                 </Button>
                               )}
                             </>
+                          )}
+                          {/* Show refund status if there's an active refund request */}
+                          {refundRequests[booking.id] && (
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                const refund = refundRequests[booking.id];
+                                const statusInfo = getRefundStatusBadge(refund);
+                                return (
+                                  <>
+                                    <span title={statusInfo.description}>
+                                      <Badge variant={statusInfo.variant} className="text-xs">
+                                        <RotateCcw className="w-3 h-3 mr-1" />
+                                        {statusInfo.label}
+                                      </Badge>
+                                    </span>
+                                    {refund.status === 'vendor_rejected' && (
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => setAppealingRefund(refund)}
+                                        className="text-yellow-400 border-yellow-400/30 hover:bg-yellow-500/10"
+                                      >
+                                        <AlertTriangle className="w-3 h-3 mr-1" />
+                                        Appeal
+                                      </Button>
+                                    )}
+                                    {refund.vendor_notes && refund.status === 'vendor_rejected' && (
+                                      <span className="text-xs text-gray-400" title={refund.vendor_notes}>
+                                        (Vendor: {refund.vendor_notes.substring(0, 30)}...)
+                                      </span>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
                           )}
                           {booking.payment_status === 'refunded' && (
                             <Badge variant="warning" className="text-xs">
@@ -493,7 +611,95 @@ function DashboardContent() {
               </div>
               
               <p className="text-xs text-gray-500 mt-4 text-center">
-                Refunds are typically processed within 2-3 business days
+                The vendor will review your request and respond within 2-3 business days
+              </p>
+            </Card>
+          </div>
+        )}
+
+        {/* Appeal Modal */}
+        {appealingRefund && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-yellow-500/20 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-yellow-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Appeal Refund Decision</h3>
+                  <p className="text-sm text-gray-400">Submit your appeal to our admin team</p>
+                </div>
+              </div>
+              
+              {appealingRefund.vendor_notes && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-sm text-gray-400 mb-1">Vendor&apos;s reason for rejection:</p>
+                  <p className="text-white text-sm">{appealingRefund.vendor_notes}</p>
+                </div>
+              )}
+              
+              <div className="mb-4 p-3 bg-dark-800 rounded-lg">
+                <p className="text-pink-400 font-semibold">
+                  Refund Amount: ₱{Number(appealingRefund.amount).toLocaleString()}
+                </p>
+                {appealingRefund.reason && (
+                  <p className="text-gray-400 text-sm mt-1">Original reason: {appealingRefund.reason}</p>
+                )}
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm text-gray-400 mb-2">
+                  Why should we reconsider? <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  value={appealReason}
+                  onChange={(e) => setAppealReason(e.target.value)}
+                  placeholder="Please explain why you believe this refund should be approved..."
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg p-3 text-white placeholder-gray-500 resize-none"
+                  rows={4}
+                />
+              </div>
+              
+              {appealError && (
+                <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                  <p className="text-red-400 text-sm">{appealError}</p>
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setAppealingRefund(null);
+                    setAppealReason('');
+                    setAppealError('');
+                  }}
+                  disabled={appealLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black"
+                  onClick={handleAppeal}
+                  disabled={appealLoading || !appealReason.trim()}
+                >
+                  {appealLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-black mr-2" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-4 h-4 mr-1" />
+                      Submit Appeal
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <p className="text-xs text-gray-500 mt-4 text-center">
+                Our admin team will review your appeal and make a final decision
               </p>
             </Card>
           </div>
