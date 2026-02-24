@@ -365,6 +365,7 @@ interface AddServiceModalProps {
     details: Record<string, string | number | boolean>;
     inclusions: string[];
     images: ServiceImage[];
+    max_bookings_per_day?: number;
   } | null;
 }
 
