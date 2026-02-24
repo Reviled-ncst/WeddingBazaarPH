@@ -5,6 +5,27 @@
  * PUT: Update user status/role
  */
 
+// Must be first - suppress ALL PHP errors as HTML
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
+
+set_error_handler(function($severity, $message, $file, $line) {
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+set_exception_handler(function($e) {
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage(),
+        'users' => [],
+        'pagination' => ['page' => 1, 'limit' => 20, 'total' => 0, 'totalPages' => 0]
+    ]);
+    exit;
+});
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, PUT, OPTIONS');
@@ -26,6 +47,21 @@ if (!$user || $user['role'] !== 'admin') {
 
 $pdo = getDBConnection();
 
+// Check if status column exists; if not, add it
+try {
+    $columns = $pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch();
+    if (!$columns) {
+        $pdo->exec("
+            ALTER TABLE users 
+            ADD COLUMN status ENUM('active', 'suspended', 'banned') DEFAULT 'active',
+            ADD COLUMN suspended_at TIMESTAMP NULL,
+            ADD COLUMN suspended_reason TEXT
+        ");
+    }
+} catch (PDOException $e) {
+    // Ignore - columns may already exist or table doesn't exist
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $role = $_GET['role'] ?? null;
     $status = $_GET['status'] ?? null;
@@ -35,9 +71,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $offset = ($page - 1) * $limit;
 
     try {
+        // Check which columns exist
+        $columnsResult = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+        $hasStatus = in_array('status', $columnsResult);
+        $hasSuspendedAt = in_array('suspended_at', $columnsResult);
+        $hasSuspendedReason = in_array('suspended_reason', $columnsResult);
+        
+        // Build dynamic SELECT
+        $statusSelect = $hasStatus ? "u.status" : "'active' as status";
+        $suspendedAtSelect = $hasSuspendedAt ? "u.suspended_at" : "NULL as suspended_at";
+        $suspendedReasonSelect = $hasSuspendedReason ? "u.suspended_reason" : "NULL as suspended_reason";
+        
         $sql = "
             SELECT u.id, u.email, u.name, u.role, u.phone, u.avatar, 
-                   u.email_verified, u.status, u.suspended_at, u.suspended_reason,
+                   u.email_verified, $statusSelect, $suspendedAtSelect, $suspendedReasonSelect,
                    u.created_at, u.updated_at,
                    (SELECT COUNT(*) FROM bookings WHERE user_id = u.id) as booking_count
             FROM users u
@@ -50,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $params[] = $role;
         }
 
-        if ($status) {
+        if ($status && $hasStatus) {
             $sql .= " AND u.status = ?";
             $params[] = $status;
         }
@@ -62,10 +109,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
 
         // Count total
-        $countSql = preg_replace('/SELECT .* FROM/', 'SELECT COUNT(*) as total FROM', $sql);
-        $countSql = preg_replace('/,\s*\(SELECT COUNT.*?\) as booking_count/', '', $countSql);
+        $countSql = "SELECT COUNT(*) as total FROM users u WHERE u.role != 'admin'";
+        $countParams = [];
+        
+        if ($role) {
+            $countSql .= " AND u.role = ?";
+            $countParams[] = $role;
+        }
+        if ($status && $hasStatus) {
+            $countSql .= " AND u.status = ?";
+            $countParams[] = $status;
+        }
+        if ($search) {
+            $countSql .= " AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)";
+            $searchTerm = "%$search%";
+            $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm]);
+        }
+        
         $stmt = $pdo->prepare($countSql);
-        $stmt->execute($params);
+        $stmt->execute($countParams);
         $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
         // Get paginated results
@@ -94,10 +156,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $roleStats[$row['role']] = (int)$row['count'];
         }
 
-        $stmt = $pdo->query("SELECT status, COUNT(*) as count FROM users WHERE role != 'admin' GROUP BY status");
-        $statusStats = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $statusStats[$row['status'] ?? 'active'] = (int)$row['count'];
+        $statusStats = ['active' => 0, 'suspended' => 0, 'banned' => 0];
+        if ($hasStatus) {
+            $stmt = $pdo->query("SELECT COALESCE(status, 'active') as status, COUNT(*) as count FROM users WHERE role != 'admin' GROUP BY COALESCE(status, 'active')");
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $statusStats[$row['status']] = (int)$row['count'];
+            }
+        } else {
+            // If no status column, all users are "active"
+            $stmt = $pdo->query("SELECT COUNT(*) as count FROM users WHERE role != 'admin'");
+            $statusStats['active'] = (int)$stmt->fetch(PDO::FETCH_ASSOC)['count'];
         }
 
         echo json_encode([
