@@ -29,12 +29,12 @@ const MIN_DOWNPAYMENT_PERCENT = 5; // Minimum 5% downpayment
 const DEFAULT_DOWNPAYMENT_PERCENT = 50; // Default 50% downpayment
 const PLATFORM_FEE_PERCENT = 5; // 5% platform charge
 
-// Test card numbers for sandbox (Luhn-valid)
-// NOTE: These are demo cards - real PayMongo test cards: 4120000000000007 (Visa), 5435930000000039 (MC)
+// PayMongo sandbox test card numbers (Luhn-valid)
+// See: https://developers.paymongo.com/docs/testing
 const TEST_CARDS = {
-  success: '4242 4242 4242 4242',  // Standard test card (Luhn valid)
-  declined: '4000 0000 0000 0002',  // Test decline card
-  insufficient: '4000 0000 0000 9995', // Insufficient funds test
+  success: '4120 0000 0000 0007',  // PayMongo Visa test card
+  mastercard: '5435 9300 0000 0039', // PayMongo Mastercard test card  
+  declined: '4000 0000 0000 0002',  // Generic decline test
 };
 
 const PAYMENT_METHODS: { id: PaymentMethod; name: string; icon: typeof Smartphone; description: string; online: boolean }[] = [

@@ -4,15 +4,20 @@
  * 
  * Get your API keys from: https://dashboard.paymongo.com/developers
  * Use TEST keys for sandbox, LIVE keys for production
+ * 
+ * REQUIRED ENVIRONMENT VARIABLES:
+ * - PAYMONGO_SECRET_KEY: Your PayMongo secret key (sk_test_* or sk_live_*)
+ * - PAYMONGO_PUBLIC_KEY: Your PayMongo public key (pk_test_* or pk_live_*)
  */
 
-// PayMongo API Keys (use environment variables in production)
-define('PAYMONGO_SECRET_KEY', getenv('PAYMONGO_SECRET_KEY') ?: 'sk_test_YOUR_SECRET_KEY_HERE');
-define('PAYMONGO_PUBLIC_KEY', getenv('PAYMONGO_PUBLIC_KEY') ?: 'pk_test_YOUR_PUBLIC_KEY_HERE');
+// PayMongo API Keys - MUST be set as environment variables
+define('PAYMONGO_SECRET_KEY', getenv('PAYMONGO_SECRET_KEY') ?: '');
+define('PAYMONGO_PUBLIC_KEY', getenv('PAYMONGO_PUBLIC_KEY') ?: '');
 
-// Test Mode - Set to true to simulate PayMongo responses without real API
-// Test card: 4343434343434345 (success), 4444444444444442 (decline)
-define('PAYMONGO_TEST_MODE', getenv('PAYMONGO_TEST_MODE') !== 'false');
+// Test Mode - Set PAYMONGO_TEST_MODE=true to simulate responses without real API
+// When false (default), actual PayMongo API calls are made
+// PayMongo sandbox test cards: 4120000000000007 (Visa), 5435930000000039 (MC)
+define('PAYMONGO_TEST_MODE', getenv('PAYMONGO_TEST_MODE') === 'true');
 
 // PayMongo API Base URL
 define('PAYMONGO_API_URL', 'https://api.paymongo.com/v1');
