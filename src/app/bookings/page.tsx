@@ -201,6 +201,15 @@ export default function MyBookingsPage() {
                                 Message
                               </Button>
                             </Link>
+                            {(booking.status === 'pending' || booking.status === 'confirmed') && booking.payment_status !== 'paid' && (
+                              <Button 
+                                size="sm"
+                                onClick={() => setPayingBooking(booking)}
+                              >
+                                <DollarSign className="w-4 h-4 mr-1" />
+                                Pay Now
+                              </Button>
+                            )}
                             {booking.status === 'pending' && (
                               <Button 
                                 variant="ghost" 
@@ -293,6 +302,26 @@ export default function MyBookingsPage() {
               b.id === reviewingBooking.id ? { ...b, has_review: true } : b
             ));
             setReviewingBooking(null);
+          }}
+        />
+      )}
+
+      {/* Payment Modal */}
+      {payingBooking && (
+        <PaymentModal
+          isOpen={!!payingBooking}
+          onClose={() => setPayingBooking(null)}
+          bookingId={payingBooking.id}
+          amount={payingBooking.total_price}
+          serviceName={payingBooking.service_name}
+          vendorName={payingBooking.vendor_name}
+          eventDate={formatDate(payingBooking.event_date)}
+          onPaymentComplete={() => {
+            // Update payment status
+            setBookings(bookings.map(b => 
+              b.id === payingBooking.id ? { ...b, payment_status: 'paid' } : b
+            ));
+            setPayingBooking(null);
           }}
         />
       )}

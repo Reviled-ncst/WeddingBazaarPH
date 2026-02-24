@@ -15,6 +15,13 @@ export function formatPrice(price: number): string {
   }).format(price);
 }
 
+// Format price range string (fixes encoding issues with peso sign)
+export function formatPriceRange(priceRange: string | null | undefined): string {
+  if (!priceRange) return 'Price on request';
+  // Replace any garbled peso signs (???) with proper peso sign
+  return priceRange.replace(/\?\?\?/g, '₱');
+}
+
 // Format date
 export function formatDate(date: string | Date): string {
   return new Intl.DateTimeFormat('en-PH', {

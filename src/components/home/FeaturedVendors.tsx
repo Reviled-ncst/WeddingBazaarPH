@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { MapPin, Star, Heart, BadgeCheck, Loader2 } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
 import { api } from '@/lib/api';
+import { formatPriceRange } from '@/lib/utils';
 
 interface FeaturedVendor {
   id: number;
@@ -179,7 +180,7 @@ export function FeaturedVendors() {
 
                     {/* Price */}
                     <p className="text-pink-300 font-medium text-sm">
-                      {vendor.price_range}
+                      {formatPriceRange(vendor.price_range)}
                     </p>
                   </div>
                 </div>

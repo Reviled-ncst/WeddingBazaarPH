@@ -11,7 +11,7 @@ $allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
 $frontendUrl = getenv('FRONTEND_URL');
 if ($frontendUrl) $allowedOrigins[] = $frontendUrl;
 
-if (in_array($origin, $allowedOrigins) || preg_match('/\.vercel\.app$/', $origin)) {
+if (in_array($origin, $allowedOrigins) || preg_match('/\.railway\.app$|\.vercel\.app$/', $origin)) {
     header("Access-Control-Allow-Origin: $origin");
 } else {
     header("Access-Control-Allow-Origin: http://localhost:3000");
@@ -37,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $userId = $_GET['user_id'] ?? null;
 
 if (!$userId) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'user_id is required']);
+    // Not logged in, return empty array
+    echo json_encode(['success' => true, 'data' => []]);
     exit();
 }
 

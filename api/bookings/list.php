@@ -5,7 +5,11 @@
  */
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (in_array($origin, ['http://localhost:3000', 'http://localhost:3001'])) {
+$allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
+$frontendUrl = getenv('FRONTEND_URL');
+if ($frontendUrl) $allowedOrigins[] = $frontendUrl;
+
+if (in_array($origin, $allowedOrigins) || preg_match('/\.railway\.app$|\.vercel\.app$/', $origin)) {
     header("Access-Control-Allow-Origin: $origin");
 } else {
     header("Access-Control-Allow-Origin: http://localhost:3000");

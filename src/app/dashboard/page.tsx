@@ -8,6 +8,7 @@ import { Calendar, Heart, MessageSquare, Bookmark, Settings, Search, Star, MapPi
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { savedApi } from '@/lib/api';
+import { formatPriceRange } from '@/lib/utils';
 import { MessagesTab } from '@/components/messaging/MessagesTab';
 
 interface SavedVendor {
@@ -57,9 +58,10 @@ function DashboardContent() {
   }, [user, activeTab]);
 
   const fetchSavedVendors = async () => {
+    if (!user) return;
     setLoadingSaved(true);
     try {
-      const response = await savedApi.list();
+      const response = await savedApi.list(user.id);
       if (response.success && response.data) {
         setSavedVendors(response.data as SavedVendor[]);
       }
@@ -244,7 +246,7 @@ function DashboardContent() {
                           <span className="text-white text-sm">{vendor.rating.toFixed(1)}</span>
                           <span className="text-gray-400 text-sm">({vendor.review_count} reviews)</span>
                         </div>
-                        <p className="text-pink-400 text-sm mt-2">{vendor.price_range}</p>
+                        <p className="text-pink-400 text-sm mt-2">{formatPriceRange(vendor.price_range)}</p>
                       </Link>
                       <button
                         onClick={() => handleUnsaveVendor(vendor.id)}

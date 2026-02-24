@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { adminApi } from '@/lib/api';
+import { formatPriceRange } from '@/lib/utils';
 import {
   Package,
   Search,
@@ -318,7 +319,7 @@ export default function ServicesPage() {
                     </div>
                   </td>
                   <td className="py-4 px-4">
-                    <p className="text-sm text-dark-300">{service.price_range}</p>
+                    <p className="text-sm text-dark-300">{formatPriceRange(service.price_range)}</p>
                   </td>
                   <td className="py-4 px-4">
                     <div className="space-y-1">
@@ -496,7 +497,7 @@ export default function ServicesPage() {
                 </div>
                 <div>
                   <p className="text-xs text-dark-400 mb-1">Price Range</p>
-                  <p className="text-dark-200">{selectedService.price_range}</p>
+                  <p className="text-dark-200">{formatPriceRange(selectedService.price_range)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-dark-400 mb-1">Location</p>

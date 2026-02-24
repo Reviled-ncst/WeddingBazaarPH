@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Button, Badge, Card } from '@/components/ui';
 import { vendorsApi, savedApi } from '@/lib/api';
+import { formatPriceRange } from '@/lib/utils';
 import { BookingModal } from '@/components/booking/BookingModal';
 import { MessageVendorModal } from '@/components/messaging/MessageVendorModal';
 
@@ -169,7 +170,7 @@ export default function VendorDetailPage() {
     const checkSaved = async () => {
       if (!userId || !vendorId) return;
       try {
-        const response = await savedApi.check(vendorId);
+        const response = await savedApi.check(vendorId, userId);
         if (response.success && response.data) {
           setIsSaved((response.data as { is_saved: boolean }).is_saved);
         }
@@ -502,7 +503,7 @@ export default function VendorDetailPage() {
                   <span className="text-white font-semibold">{vendor.rating.toFixed(1)}</span>
                   <span className="text-gray-400">({vendor.review_count} reviews)</span>
                 </div>
-                <p className="text-pink-400 font-semibold text-lg">{vendor.price_range}</p>
+                <p className="text-pink-400 font-semibold text-lg">{formatPriceRange(vendor.price_range)}</p>
               </div>
 
               <div className="space-y-3 mb-6">

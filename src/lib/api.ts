@@ -152,9 +152,14 @@ export const servicesApi = {
 
 // Saved Vendors API
 export const savedApi = {
-  check: (vendorId: number) => api.get(`/saved/check.php?vendor_id=${vendorId}`),
+  check: (vendorId: number, userId?: number) => {
+    const params = new URLSearchParams();
+    params.set('vendor_id', vendorId.toString());
+    if (userId) params.set('user_id', userId.toString());
+    return api.get(`/saved/check.php?${params.toString()}`);
+  },
   toggle: (vendorId: number) => api.post('/saved/toggle.php', { vendor_id: vendorId }),
-  list: () => api.get('/saved/list.php'),
+  list: (userId: number) => api.get(`/saved/list.php?user_id=${userId}`),
 };
 
 // Reviews API
@@ -167,6 +172,27 @@ export const reviewsApi = {
   },
   create: (data: { booking_id: number; rating: number; comment?: string }) =>
     api.post('/reviews/create.php', data),
+};
+
+// Messages API
+export const messagesApi = {
+  // Direct messages
+  conversations: (userId: number) =>
+    api.get(`/messages/conversations.php?user_id=${userId}`),
+  list: (userId: number, otherUserId: number) =>
+    api.get(`/messages/list.php?user_id=${userId}&other_user_id=${otherUserId}`),
+  send: (senderId: number, receiverId: number, content: string) =>
+    api.post('/messages/send.php', { sender_id: senderId, receiver_id: receiverId, content }),
+  
+  // Group messages
+  groupConversations: (userId: number) =>
+    api.get(`/messages/group-conversations.php?user_id=${userId}`),
+  createGroup: (createdBy: number, name: string, participantIds: number[]) =>
+    api.post('/messages/create-group.php', { created_by: createdBy, name, participant_ids: participantIds }),
+  groupMessages: (conversationId: number, userId: number) =>
+    api.get(`/messages/group-list.php?conversation_id=${conversationId}&user_id=${userId}`),
+  sendGroup: (conversationId: number, senderId: number, content: string) =>
+    api.post('/messages/send-group.php', { conversation_id: conversationId, sender_id: senderId, content }),
 };
 
 // Coordinator Dashboard API

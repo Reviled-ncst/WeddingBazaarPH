@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Search, MapPin, Star, BadgeCheck, Camera, Building, UtensilsCrossed, Flower2, Music, Video, Palette, Sparkles } from 'lucide-react';
 import { Button, Badge, Card } from '@/components/ui';
 import { vendorsApi } from '@/lib/api';
-import { formatPrice } from '@/lib/utils';
+import { formatPriceRange } from '@/lib/utils';
 
 interface Vendor {
   id: number;
@@ -271,7 +271,7 @@ function VendorsContent() {
 
                     <div className="flex items-center justify-between">
                       <span className="text-pink-400 font-medium text-sm">
-                        {vendor.price_range}
+                        {formatPriceRange(vendor.price_range)}
                       </span>
                     </div>
                   </div>

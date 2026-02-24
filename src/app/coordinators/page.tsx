@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, MapPin, Star, BadgeCheck, Heart, Users, Calendar, Award } from 'lucide-react';
 import { Button, Badge, Card } from '@/components/ui';
 import { coordinatorsApi } from '@/lib/api';
+import { formatPriceRange } from '@/lib/utils';
 
 interface Service {
   id: number;
@@ -229,7 +230,7 @@ export default function CoordinatorsPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-gray-400">Starting from</p>
-                        <p className="text-lg font-semibold text-pink-400">{coordinator.price_range}</p>
+                        <p className="text-lg font-semibold text-pink-400">{formatPriceRange(coordinator.price_range)}</p>
                       </div>
                     </div>
 

@@ -11,7 +11,7 @@ $allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
 $frontendUrl = getenv('FRONTEND_URL');
 if ($frontendUrl) $allowedOrigins[] = $frontendUrl;
 
-if (in_array($origin, $allowedOrigins) || preg_match('/\.vercel\.app$/', $origin)) {
+if (in_array($origin, $allowedOrigins) || preg_match('/\.railway\.app$|\.vercel\.app$/', $origin)) {
     header("Access-Control-Allow-Origin: $origin");
 } else {
     header("Access-Control-Allow-Origin: http://localhost:3000");
@@ -37,9 +37,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 $userId = $_GET['user_id'] ?? null;
 $vendorId = $_GET['vendor_id'] ?? null;
 
-if (!$userId || !$vendorId) {
+// If user_id is missing, return is_saved: false (unauthenticated user)
+if (!$vendorId) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'user_id and vendor_id are required']);
+    echo json_encode(['success' => false, 'message' => 'vendor_id is required']);
+    exit();
+}
+
+if (!$userId) {
+    // Not logged in, return is_saved: false
+    echo json_encode(['success' => true, 'data' => ['is_saved' => false]]);
     exit();
 }
 
@@ -52,7 +59,9 @@ try {
     
     echo json_encode([
         'success' => true,
-        'saved' => $existing ? true : false
+        'data' => [
+            'is_saved' => $existing ? true : false
+        ]
     ]);
     
 } catch (PDOException $e) {

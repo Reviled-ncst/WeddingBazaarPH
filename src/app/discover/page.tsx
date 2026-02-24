@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Button, Badge, Card } from '@/components/ui';
 import { vendorsApi, coordinatorsApi } from '@/lib/api';
+import { formatPriceRange } from '@/lib/utils';
 
 interface Provider {
   id: number;
@@ -205,12 +206,6 @@ function DiscoverContent() {
     return matchesCategory && matchesSearch;
   });
 
-  const formatPrice = (priceRange: string | null | undefined) => {
-    if (!priceRange) return 'Price on request';
-    // Replace ??? with PHP peso sign
-    return priceRange.replace(/\?\?\?/g, '₱');
-  };
-
   return (
     <div className="min-h-screen bg-dark-950">
       {/* Filter Bar */}
@@ -324,7 +319,7 @@ function DiscoverContent() {
                         </div>
                       </div>
                       <p className="text-gray-400 text-sm line-clamp-2 mb-3">{provider.description}</p>
-                      <p className="text-pink-400 font-medium">{formatPrice(provider.price_range)}</p>
+                      <p className="text-pink-400 font-medium">{formatPriceRange(provider.price_range)}</p>
                     </div>
                   </Card>
                 </Link>

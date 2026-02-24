@@ -657,7 +657,7 @@ export function BookingModal({
       </div>
 
       {/* Payment Modal */}
-      {createdBookingId && (
+      {createdBookingId !== null && (
         <PaymentModal
           isOpen={showPaymentModal}
           onClose={() => {
