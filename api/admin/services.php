@@ -36,11 +36,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     try {
         $sql = "
-            SELECT s.*, v.business_name as vendor_name, v.verification_status as vendor_status,
-                   u.email as vendor_email
+            SELECT s.*, 
+                   v.id as vendor_id, v.business_name as vendor_name, 
+                   v.verification_status as vendor_status, v.city as vendor_city,
+                   u.email as vendor_email,
+                   COALESCE(r.avg_rating, 0) as rating,
+                   COALESCE(r.review_count, 0) as review_count,
+                   COALESCE(b.booking_count, 0) as booking_count
             FROM services s
             JOIN vendors v ON s.vendor_id = v.id
             JOIN users u ON v.user_id = u.id
+            LEFT JOIN (
+                SELECT vendor_id, AVG(rating) as avg_rating, COUNT(*) as review_count 
+                FROM reviews GROUP BY vendor_id
+            ) r ON v.id = r.vendor_id
+            LEFT JOIN (
+                SELECT vendor_id, COUNT(*) as booking_count 
+                FROM bookings WHERE status != 'cancelled' GROUP BY vendor_id
+            ) b ON v.id = b.vendor_id
             WHERE 1=1
         ";
         $params = [];
@@ -62,8 +75,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $params = array_merge($params, [$searchTerm, $searchTerm]);
         }
 
-        // Count total
-        $countSql = preg_replace('/SELECT .* FROM/', 'SELECT COUNT(*) as total FROM', $sql);
+        // Count total - simpler count query
+        $countSql = "SELECT COUNT(*) as total FROM services s 
+                     JOIN vendors v ON s.vendor_id = v.id 
+                     JOIN users u ON v.user_id = u.id WHERE 1=1";
+        if ($category) $countSql .= " AND s.category = ?";
+        if ($status === 'active') $countSql .= " AND s.is_active = 1";
+        elseif ($status === 'inactive') $countSql .= " AND s.is_active = 0";
+        if ($search) $countSql .= " AND (s.name LIKE ? OR v.business_name LIKE ?)";
+        
         $stmt = $pdo->prepare($countSql);
         $stmt->execute($params);
         $total = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
@@ -73,12 +93,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $stmt->execute($params);
         $services = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Decode JSON fields
-        foreach ($services as &$service) {
-            $service['pricing_items'] = $service['pricing_items'] ? json_decode($service['pricing_items'], true) : [];
-            $service['add_ons'] = $service['add_ons'] ? json_decode($service['add_ons'], true) : [];
-            $service['inclusions'] = $service['inclusions'] ? json_decode($service['inclusions'], true) : [];
-            $service['images'] = $service['images'] ? json_decode($service['images'], true) : [];
+        // Format services for frontend
+        $formattedServices = [];
+        foreach ($services as $service) {
+            $formattedServices[] = [
+                'id' => (int)$service['id'],
+                'name' => $service['name'],
+                'description' => $service['description'],
+                'category' => $service['category'],
+                'subcategory' => $service['subcategory'] ?? null,
+                'price_range' => $service['base_total'] ? '₱' . number_format($service['base_total'], 0) : 'Contact for price',
+                'location' => $service['vendor_city'] ?? 'Philippines',
+                'status' => $service['is_active'] ? 'active' : 'inactive',
+                'is_featured' => (bool)($service['is_featured'] ?? false),
+                'rating' => round((float)$service['rating'], 1),
+                'review_count' => (int)$service['review_count'],
+                'booking_count' => (int)$service['booking_count'],
+                'created_at' => $service['created_at'],
+                'vendor' => [
+                    'id' => (int)$service['vendor_id'],
+                    'name' => $service['vendor_name'],
+                    'verified' => $service['vendor_status'] === 'verified',
+                    'email' => $service['vendor_email']
+                ],
+                'pricing_items' => $service['pricing_items'] ? json_decode($service['pricing_items'], true) : [],
+                'add_ons' => $service['add_ons'] ? json_decode($service['add_ons'], true) : [],
+                'inclusions' => $service['inclusions'] ? json_decode($service['inclusions'], true) : [],
+                'images' => $service['images'] ? json_decode($service['images'], true) : [],
+                'base_total' => $service['base_total']
+            ];
         }
 
         // Get stats
@@ -93,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         echo json_encode([
             'success' => true,
-            'services' => $services,
+            'services' => $formattedServices,
             'pagination' => [
                 'page' => $page,
                 'limit' => $limit,
@@ -116,24 +159,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $input = json_decode(file_get_contents('php://input'), true);
     $serviceId = $input['service_id'] ?? null;
-    $isActive = $input['is_active'] ?? null;
-
-    if (!$serviceId || $isActive === null) {
+    
+    if (!$serviceId) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Service ID and is_active required']);
+        echo json_encode(['success' => false, 'message' => 'Service ID required']);
         exit;
     }
 
     try {
-        $stmt = $pdo->prepare("UPDATE services SET is_active = ? WHERE id = ?");
-        $stmt->execute([$isActive ? 1 : 0, $serviceId]);
+        $updates = [];
+        $params = [];
+        $actions = [];
+
+        // Handle status update (frontend sends 'status': 'active'/'inactive')
+        if (isset($input['status'])) {
+            $isActive = $input['status'] === 'active' ? 1 : 0;
+            $updates[] = 'is_active = ?';
+            $params[] = $isActive;
+            $actions[] = $isActive ? 'enabled' : 'disabled';
+        }
+        
+        // Also support direct is_active
+        if (isset($input['is_active'])) {
+            $isActive = $input['is_active'] ? 1 : 0;
+            $updates[] = 'is_active = ?';
+            $params[] = $isActive;
+            $actions[] = $isActive ? 'enabled' : 'disabled';
+        }
+
+        // Handle is_featured update
+        if (isset($input['is_featured'])) {
+            $updates[] = 'is_featured = ?';
+            $params[] = $input['is_featured'] ? 1 : 0;
+            $actions[] = $input['is_featured'] ? 'featured' : 'unfeatured';
+        }
+
+        if (empty($updates)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'No updates provided']);
+            exit;
+        }
+
+        $params[] = $serviceId;
+        $sql = "UPDATE services SET " . implode(', ', $updates) . " WHERE id = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
 
         // Log activity
-        $action = $isActive ? 'enabled' : 'disabled';
+        $actionStr = implode(' and ', $actions);
         $stmt = $pdo->prepare("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (?, ?, 'service', ?, ?, ?)");
-        $stmt->execute([$user['id'], "service_$action", $serviceId, "Service #$serviceId $action by admin", $_SERVER['REMOTE_ADDR'] ?? '']);
+        $stmt->execute([$user['id'], "service_update", $serviceId, "Service #$serviceId $actionStr by admin", $_SERVER['REMOTE_ADDR'] ?? '']);
 
-        echo json_encode(['success' => true, 'message' => "Service $action"]);
+        echo json_encode(['success' => true, 'message' => "Service $actionStr"]);
 
     } catch (PDOException $e) {
         http_response_code(500);
