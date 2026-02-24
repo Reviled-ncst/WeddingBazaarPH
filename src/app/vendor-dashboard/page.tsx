@@ -817,9 +817,21 @@ function VendorDashboardContent() {
                         <div className="w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0 bg-dark-800">
                           {service.images && service.images.length > 0 ? (
                             <img 
-                              src={service.images[0].url.startsWith('http') ? service.images[0].url : `http://localhost${service.images[0].url}`}
+                              src={(() => {
+                                let url = service.images[0].url;
+                                if (url.startsWith('http')) return url;
+                                // Strip /wedding-bazaar-api prefix if present (legacy URLs)
+                                if (url.startsWith('/wedding-bazaar-api')) {
+                                  url = url.replace('/wedding-bazaar-api', '');
+                                }
+                                return `${process.env.NEXT_PUBLIC_API_URL}${url}`;
+                              })()}
                               alt={service.name}
                               className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">

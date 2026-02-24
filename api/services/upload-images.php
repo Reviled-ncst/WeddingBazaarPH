@@ -82,8 +82,9 @@ for ($i = 0; $i < $fileCount; $i++) {
     $filepath = $uploadDir . $filename;
     
     if (move_uploaded_file($files['tmp_name'][$i], $filepath)) {
+        // Use just /uploads/... path - the API URL will be prepended by frontend
         $uploadedImages[] = [
-            'url' => '/wedding-bazaar-api/uploads/services/' . $vendorId . '/' . $filename,
+            'url' => '/uploads/services/' . $vendorId . '/' . $filename,
             'filename' => $filename,
             'originalName' => $files['name'][$i],
             'size' => $files['size'][$i],

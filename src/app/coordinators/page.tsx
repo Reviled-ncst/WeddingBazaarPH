@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, MapPin, Star, BadgeCheck, Heart, Users, Calendar, Award } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, MapPin, Star, BadgeCheck, Heart, Users, Calendar, Award, MessageCircle } from 'lucide-react';
 import { Button, Badge, Card } from '@/components/ui';
 import { coordinatorsApi } from '@/lib/api';
 import { formatPriceRange } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
+import { MessageVendorModal } from '@/components/messaging/MessageVendorModal';
 
 interface Service {
   id: number;
@@ -51,10 +54,13 @@ const coordinatorImages = [
 ];
 
 export default function CoordinatorsPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
+  const [messagingCoordinator, setMessagingCoordinator] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     fetchCoordinators();
@@ -271,7 +277,17 @@ export default function CoordinatorsPage() {
                       <Link href={`/vendors/${coordinator.id}`}>
                         <Button>View Profile</Button>
                       </Link>
-                      <Button variant="outline">
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          if (!user) {
+                            router.push('/login');
+                            return;
+                          }
+                          setMessagingCoordinator({ id: coordinator.id, name: coordinator.business_name });
+                        }}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
                         Contact
                       </Button>
                     </div>
@@ -280,6 +296,21 @@ export default function CoordinatorsPage() {
               </Card>
             ))}
           </div>
+        )}
+
+        {/* Message Coordinator Modal */}
+        {messagingCoordinator && (
+          <MessageVendorModal
+            isOpen={!!messagingCoordinator}
+            onClose={() => setMessagingCoordinator(null)}
+            vendorId={messagingCoordinator.id}
+            vendorName={messagingCoordinator.name}
+            userId={user?.id ?? null}
+            onSuccess={() => {
+              setMessagingCoordinator(null);
+              router.push('/dashboard?tab=messages');
+            }}
+          />
         )}
       </div>
     </div>

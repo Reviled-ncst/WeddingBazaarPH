@@ -98,8 +98,42 @@ try {
                 'data' => $refunds
             ]);
         } else {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'booking_id or user_id required']);
+            // Admin: Get all refund requests
+            // Check if admin (optional Authorization header check)
+            $status = $_GET['status'] ?? '';
+            
+            $sql = "
+                SELECT r.*, 
+                       u.name as user_name, u.email as user_email,
+                       b.total_price, b.payment_id, b.event_date,
+                       v.business_name as vendor_name,
+                       s.name as service_name
+                FROM refund_requests r
+                JOIN users u ON r.user_id = u.id
+                JOIN bookings b ON r.booking_id = b.id
+                LEFT JOIN vendors v ON b.vendor_id = v.id
+                LEFT JOIN services s ON b.service_id = s.id
+            ";
+            
+            if ($status && in_array($status, ['pending', 'approved', 'rejected', 'processed'])) {
+                $sql .= " WHERE r.status = ?";
+            }
+            
+            $sql .= " ORDER BY r.created_at DESC";
+            
+            $stmt = $pdo->prepare($sql);
+            if ($status && in_array($status, ['pending', 'approved', 'rejected', 'processed'])) {
+                $stmt->execute([$status]);
+            } else {
+                $stmt->execute();
+            }
+            
+            $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo json_encode([
+                'success' => true,
+                'requests' => $requests
+            ]);
         }
         exit();
     }

@@ -226,11 +226,17 @@ export default function VendorDetailPage() {
       for (const service of vendor.services) {
         if (service.images && Array.isArray(service.images)) {
           for (const img of service.images) {
-            const url = typeof img === 'string' ? img : img.url;
+            let url = typeof img === 'string' ? img : img.url;
             if (url) {
-              // Add localhost prefix if it's a relative URL
-              const fullUrl = url.startsWith('http') ? url : `http://localhost${url}`;
-              serviceImages.push(fullUrl);
+              // Add API URL prefix if it's a relative URL
+              if (!url.startsWith('http')) {
+                // Strip /wedding-bazaar-api prefix if present (legacy URLs)
+                if (url.startsWith('/wedding-bazaar-api')) {
+                  url = url.replace('/wedding-bazaar-api', '');
+                }
+                url = `${process.env.NEXT_PUBLIC_API_URL}${url}`;
+              }
+              serviceImages.push(url);
             }
           }
         }

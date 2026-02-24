@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Heart, MessageSquare, Bookmark, Settings, Search, Star, MapPin, Trash2, Clock, CheckCircle, XCircle, CreditCard } from 'lucide-react';
+import { Calendar, Heart, MessageSquare, Bookmark, Settings, Search, Star, MapPin, Trash2, Clock, CheckCircle, XCircle, CreditCard, RotateCcw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -12,6 +12,7 @@ import { savedApi } from '@/lib/api';
 import { formatPriceRange } from '@/lib/utils';
 import { MessagesTab } from '@/components/messaging/MessagesTab';
 import { PaymentModal } from '@/components/booking/PaymentModal';
+import { MessageVendorModal } from '@/components/messaging/MessageVendorModal';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
@@ -58,6 +59,11 @@ function DashboardContent() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [payingBooking, setPayingBooking] = useState<Booking | null>(null);
+  const [refundingBooking, setRefundingBooking] = useState<Booking | null>(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [refundError, setRefundError] = useState('');
+  const [messagingVendor, setMessagingVendor] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     if (tabParam) {
@@ -117,6 +123,42 @@ function DashboardContent() {
       console.error('Failed to fetch bookings:', error);
     } finally {
       setLoadingBookings(false);
+    }
+  };
+
+  const handleRefundRequest = async () => {
+    if (!refundingBooking || !user) return;
+    
+    setRefundLoading(true);
+    setRefundError('');
+    
+    try {
+      const response = await fetch(`${API_URL}/payments/refund.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'request',
+          booking_id: refundingBooking.id,
+          user_id: user.id,
+          reason: refundReason
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('Refund request submitted! We\'ll review it within 2-3 business days.');
+        setRefundingBooking(null);
+        setRefundReason('');
+        fetchBookings(); // Refresh to show updated status
+      } else {
+        setRefundError(result.message || 'Failed to submit refund request');
+      }
+    } catch (error) {
+      console.error('Refund request error:', error);
+      setRefundError('Network error. Please try again.');
+    } finally {
+      setRefundLoading(false);
     }
   };
 
@@ -295,7 +337,7 @@ function DashboardContent() {
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {!isPaid && booking.status !== 'cancelled' && (
                             <Button 
                               size="sm" 
@@ -306,12 +348,39 @@ function DashboardContent() {
                               Pay Now
                             </Button>
                           )}
-                          {isPaid && (
-                            <Badge variant="success" className="text-xs">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Paid
+                          {isPaid && booking.payment_status !== 'refunded' && (
+                            <>
+                              <Badge variant="success" className="text-xs">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Paid
+                              </Badge>
+                              {booking.status !== 'completed' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => setRefundingBooking(booking)}
+                                  className="text-orange-400 border-orange-400/30 hover:bg-orange-500/10"
+                                >
+                                  <RotateCcw className="w-3 h-3 mr-1" />
+                                  Request Refund
+                                </Button>
+                              )}
+                            </>
+                          )}
+                          {booking.payment_status === 'refunded' && (
+                            <Badge variant="warning" className="text-xs">
+                              <RotateCcw className="w-3 h-3 mr-1" />
+                              Refunded
                             </Badge>
                           )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setMessagingVendor({ id: booking.vendor_id, name: booking.business_name || booking.vendor_name })}
+                          >
+                            <MessageSquare className="w-3 h-3 mr-1" />
+                            Message
+                          </Button>
                           <Link href={`/vendors/${booking.vendor_id}`}>
                             <Button variant="outline" size="sm">View Vendor</Button>
                           </Link>
@@ -350,6 +419,101 @@ function DashboardContent() {
           />
         )}
 
+        {/* Refund Request Modal */}
+        {refundingBooking && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-orange-500/20 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-orange-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Request Refund</h3>
+                  <p className="text-sm text-gray-400">This will cancel your booking</p>
+                </div>
+              </div>
+              
+              <div className="mb-4 p-3 bg-dark-800 rounded-lg">
+                <p className="text-white font-medium">{refundingBooking.business_name}</p>
+                <p className="text-gray-400 text-sm">{refundingBooking.service_name || 'Service'}</p>
+                <p className="text-pink-400 font-semibold mt-1">
+                  Refund Amount: ₱{Number(refundingBooking.total_price).toLocaleString()}
+                </p>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm text-gray-400 mb-2">
+                  Reason for refund (optional)
+                </label>
+                <textarea
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="Please tell us why you're requesting a refund..."
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg p-3 text-white placeholder-gray-500 resize-none"
+                  rows={3}
+                />
+              </div>
+              
+              {refundError && (
+                <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                  <p className="text-red-400 text-sm">{refundError}</p>
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setRefundingBooking(null);
+                    setRefundReason('');
+                    setRefundError('');
+                  }}
+                  disabled={refundLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-orange-500 hover:bg-orange-600"
+                  onClick={handleRefundRequest}
+                  disabled={refundLoading}
+                >
+                  {refundLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="w-4 h-4 mr-1" />
+                      Submit Request
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <p className="text-xs text-gray-500 mt-4 text-center">
+                Refunds are typically processed within 2-3 business days
+              </p>
+            </Card>
+          </div>
+        )}
+
+        {/* Message Vendor Modal */}
+        {messagingVendor && (
+          <MessageVendorModal
+            isOpen={!!messagingVendor}
+            onClose={() => setMessagingVendor(null)}
+            vendorId={messagingVendor.id}
+            vendorName={messagingVendor.name}
+            userId={user?.id ?? null}
+            onSuccess={() => {
+              setMessagingVendor(null);
+              setActiveTab('messages');
+            }}
+          />
+        )}
+
         {activeTab === 'saved' && (
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">Saved Providers</h3>
@@ -378,13 +542,22 @@ function DashboardContent() {
                         </div>
                         <p className="text-pink-400 text-sm mt-2">{formatPriceRange(vendor.price_range)}</p>
                       </Link>
-                      <button
-                        onClick={() => handleUnsaveVendor(vendor.id)}
-                        className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                        title="Remove from saved"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => setMessagingVendor({ id: vendor.id, name: vendor.business_name })}
+                          className="p-2 text-gray-400 hover:text-pink-400 transition-colors"
+                          title="Message vendor"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleUnsaveVendor(vendor.id)}
+                          className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                          title="Remove from saved"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </Card>
                 ))}

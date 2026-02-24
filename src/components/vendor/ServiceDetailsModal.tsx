@@ -36,6 +36,17 @@ const SERVICE_CATEGORY_LABELS: Record<string, string> = {
   'wedding planner': 'Wedding Planner',
 };
 
+// Helper to transform image URLs
+const getImageUrl = (url: string): string => {
+  if (url.startsWith('http')) return url;
+  // Strip /wedding-bazaar-api prefix if present (legacy URLs)
+  let cleanUrl = url;
+  if (cleanUrl.startsWith('/wedding-bazaar-api')) {
+    cleanUrl = cleanUrl.replace('/wedding-bazaar-api', '');
+  }
+  return `${process.env.NEXT_PUBLIC_API_URL}${cleanUrl}`;
+};
+
 export function ServiceDetailsModal({ isOpen, onClose, service }: ServiceDetailsModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -101,7 +112,7 @@ export function ServiceDetailsModal({ isOpen, onClose, service }: ServiceDetails
                 {hasImages ? (
                   <>
                     <img
-                      src={service.images[currentImageIndex].url}
+                      src={getImageUrl(service.images[currentImageIndex].url)}
                       alt={service.images[currentImageIndex].originalName || service.name}
                       className="w-full h-full object-cover"
                     />
@@ -152,7 +163,7 @@ export function ServiceDetailsModal({ isOpen, onClose, service }: ServiceDetails
                       }`}
                     >
                       <img
-                        src={image.url}
+                        src={getImageUrl(image.url)}
                         alt={image.originalName || `Image ${idx + 1}`}
                         className="w-full h-full object-cover"
                       />

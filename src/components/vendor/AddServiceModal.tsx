@@ -4,6 +4,18 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Plus, Trash2, AlertCircle, Check, Info, Calculator, DollarSign, ChevronLeft, ChevronRight, Image, Upload } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 
+// Helper to transform image URLs
+const getImageUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('blob:')) return url;
+  // Strip /wedding-bazaar-api prefix if present (legacy URLs)
+  let cleanUrl = url;
+  if (cleanUrl.startsWith('/wedding-bazaar-api')) {
+    cleanUrl = cleanUrl.replace('/wedding-bazaar-api', '');
+  }
+  return `${process.env.NEXT_PUBLIC_API_URL}${cleanUrl}`;
+};
+
 // Type for category field definitions
 interface CategoryField {
   name: string;
@@ -1014,7 +1026,7 @@ export function AddServiceModal({ isOpen, onClose, onSave, vendorCategory, editS
                     {formData.images.map((img, index) => (
                       <div key={index} className="relative group aspect-square rounded-lg overflow-hidden bg-dark-700">
                         <img 
-                          src={img.url} 
+                          src={getImageUrl(img.url)} 
                           alt={img.originalName || `Image ${index + 1}`}
                           className="w-full h-full object-cover"
                         />

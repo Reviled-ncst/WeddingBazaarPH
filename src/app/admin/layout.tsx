@@ -28,7 +28,8 @@ import {
   Globe,
   BarChart3,
   MousePointer,
-  Database
+  Database,
+  RotateCcw
 } from 'lucide-react';
 
 const adminNavItems = [
@@ -39,6 +40,7 @@ const adminNavItems = [
   { name: 'Categories', href: '/admin/categories', icon: FolderTree },
   { name: 'Services', href: '/admin/services', icon: Package },
   { name: 'Verifications', href: '/admin/verifications', icon: ShieldCheck },
+  { name: 'Refunds', href: '/admin/refunds', icon: RotateCcw },
   { name: 'Complaints', href: '/admin/complaints', icon: MessageSquareWarning },
   { name: 'Support Tickets', href: '/admin/support', icon: HeadphonesIcon },
   { name: 'Activity Logs', href: '/admin/activity-logs', icon: Activity },
