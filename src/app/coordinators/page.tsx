@@ -20,6 +20,7 @@ interface Service {
 
 interface Coordinator {
   id: number;
+  user_id: number;
   business_name: string;
   category: string;
   description: string;
@@ -28,6 +29,8 @@ interface Coordinator {
   rating: number;
   review_count: number;
   images: string[];
+  specialties: string[];
+  weddings_completed: number;
   is_verified: boolean;
   owner_name: string;
   phone: string;
@@ -273,8 +276,30 @@ export default function CoordinatorsPage() {
                       </div>
                     )}
 
+                    {/* Specialties */}
+                    {coordinator.specialties && coordinator.specialties.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {coordinator.specialties.slice(0, 4).map((specialty, idx) => (
+                          <span key={idx} className="text-xs bg-dark-700 text-gray-300 px-2 py-1 rounded">
+                            {specialty}
+                          </span>
+                        ))}
+                        {coordinator.specialties.length > 4 && (
+                          <span className="text-xs text-gray-500">+{coordinator.specialties.length - 4} more</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Weddings Completed Badge */}
+                    {coordinator.weddings_completed > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+                        <Award className="w-4 h-4 text-yellow-400" />
+                        <span>{coordinator.weddings_completed} weddings completed</span>
+                      </div>
+                    )}
+
                     <div className="flex gap-3">
-                      <Link href={`/vendors/${coordinator.id}`}>
+                      <Link href={`/coordinators/${coordinator.id}`}>
                         <Button>View Profile</Button>
                       </Link>
                       <Button 
@@ -284,7 +309,7 @@ export default function CoordinatorsPage() {
                             router.push('/login');
                             return;
                           }
-                          setMessagingCoordinator({ id: coordinator.id, name: coordinator.business_name });
+                          setMessagingCoordinator({ id: coordinator.user_id, name: coordinator.business_name });
                         }}
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />

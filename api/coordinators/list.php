@@ -48,6 +48,7 @@ try {
     $sql = "
         SELECT 
             c.id,
+            c.user_id,
             c.business_name,
             'coordinator' as category,
             c.description,
@@ -78,6 +79,8 @@ try {
 
     // Parse JSON fields
     foreach ($coordinators as &$coordinator) {
+        $coordinator['id'] = (int)$coordinator['id'];
+        $coordinator['user_id'] = (int)$coordinator['user_id'];
         $coordinator['images'] = $coordinator['images'] ? json_decode($coordinator['images'], true) : [];
         $coordinator['specialties'] = $coordinator['specialties'] ? json_decode($coordinator['specialties'], true) : [];
         $coordinator['rating'] = (float)$coordinator['rating'];

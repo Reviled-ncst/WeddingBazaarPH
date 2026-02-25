@@ -103,6 +103,40 @@ try {
 
     $coordinator['affiliated_vendors'] = $affiliatedVendors;
 
+    // Get coordinator services
+    $servicesQuery = "SELECT 
+                        id,
+                        name,
+                        description,
+                        pricing_items,
+                        base_total,
+                        add_ons,
+                        details,
+                        inclusions,
+                        images,
+                        max_bookings_per_day
+                      FROM coordinator_services
+                      WHERE coordinator_id = ? AND is_active = 1
+                      ORDER BY base_total ASC";
+    
+    $servicesStmt = $pdo->prepare($servicesQuery);
+    $servicesStmt->execute([$coordinatorId]);
+    $services = $servicesStmt->fetchAll();
+
+    foreach ($services as &$service) {
+        $service['id'] = (int)$service['id'];
+        $service['base_total'] = (float)$service['base_total'];
+        $service['price'] = (float)$service['base_total']; // Alias for compatibility
+        $service['max_bookings_per_day'] = (int)$service['max_bookings_per_day'];
+        $service['pricing_items'] = $service['pricing_items'] ? json_decode($service['pricing_items'], true) : [];
+        $service['add_ons'] = $service['add_ons'] ? json_decode($service['add_ons'], true) : [];
+        $service['details'] = $service['details'] ? json_decode($service['details'], true) : [];
+        $service['inclusions'] = $service['inclusions'] ? json_decode($service['inclusions'], true) : [];
+        $service['images'] = $service['images'] ? json_decode($service['images'], true) : [];
+    }
+
+    $coordinator['services'] = $services;
+
     // Get packages
     $packagesQuery = "SELECT 
                         cp.id,

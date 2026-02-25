@@ -1,11 +1,128 @@
 <?php
-// Migration: Add coordinator vendor affiliations tables
+// Migration: Add coordinator vendor affiliations tables + saved/reviews
 
 require_once __DIR__ . '/../config/database.php';
 
 $pdo = getDBConnection();
 
 try {
+    // Saved Coordinators (Favorites) - mirrors saved_vendors
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS saved_coordinators (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            coordinator_id INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (coordinator_id) REFERENCES coordinators(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_saved (user_id, coordinator_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    echo "Created saved_coordinators table\n";
+
+    // Reviews for coordinators
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS coordinator_reviews (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            coordinator_id INT NOT NULL,
+            booking_id INT,
+            rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+            comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (coordinator_id) REFERENCES coordinators(id) ON DELETE CASCADE,
+            INDEX idx_coordinator (coordinator_id),
+            INDEX idx_rating (rating)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    echo "Created coordinator_reviews table\n";
+
+    // Coordinator services/packages table (similar to vendor services)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS coordinator_services (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            coordinator_id INT NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            description TEXT,
+            pricing_items JSON NOT NULL,
+            base_total DECIMAL(12,2) NOT NULL DEFAULT 0,
+            add_ons JSON,
+            details JSON,
+            inclusions JSON,
+            images JSON,
+            max_bookings_per_day INT DEFAULT 1,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (coordinator_id) REFERENCES coordinators(id) ON DELETE CASCADE,
+            INDEX idx_coordinator (coordinator_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    echo "Created coordinator_services table\n";
+
+    // Bookings for coordinators (separate from vendor bookings)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS coordinator_bookings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            coordinator_id INT NOT NULL,
+            service_id INT,
+            event_date DATE NOT NULL,
+            status ENUM('pending', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending',
+            total_price DECIMAL(10,2),
+            notes TEXT,
+            guest_count INT,
+            event_location VARCHAR(255),
+            event_latitude DECIMAL(10, 8),
+            event_longitude DECIMAL(11, 8),
+            travel_fee DECIMAL(10,2) DEFAULT 0,
+            has_review BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (coordinator_id) REFERENCES coordinators(id) ON DELETE CASCADE,
+            FOREIGN KEY (service_id) REFERENCES coordinator_services(id) ON DELETE SET NULL,
+            INDEX idx_user (user_id),
+            INDEX idx_coordinator (coordinator_id),
+            INDEX idx_status (status),
+            INDEX idx_event_date (event_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+    echo "Created coordinator_bookings table\n";
+
+    // Seed sample coordinator services
+    $pdo->exec("
+        INSERT IGNORE INTO coordinator_services (coordinator_id, name, description, pricing_items, base_total, inclusions, details) VALUES
+        (1, 'Day-of Coordination', 'Stress-free wedding day with our professional coordination team managing all logistics.', 
+         '[{\"description\": \"Day-of Coordination\", \"quantity\": 1, \"unit\": \"event\", \"rate\": 35000, \"total\": 35000}, {\"description\": \"Assistant Coordinator\", \"quantity\": 1, \"unit\": \"person\", \"rate\": 5000, \"total\": 5000}]',
+         40000,
+         '[\"Timeline management\", \"Vendor coordination\", \"Emergency kit\", \"2 coordinators on-site\", \"Rehearsal attendance\"]',
+         '{\"hours\": 12, \"coordinators\": 2}'),
+        (1, 'Partial Planning', 'Perfect for couples who have started planning but need expert guidance to bring it all together.',
+         '[{\"description\": \"Partial Planning\", \"quantity\": 1, \"unit\": \"package\", \"rate\": 60000, \"total\": 60000}, {\"description\": \"Day-of Coordination\", \"quantity\": 1, \"unit\": \"event\", \"rate\": 35000, \"total\": 35000}]',
+         95000,
+         '[\"Vendor recommendations\", \"Budget review\", \"Timeline creation\", \"5 planning meetings\", \"Day-of coordination\", \"Emergency kit\"]',
+         '{\"meetings\": 5, \"coordinators\": 2}'),
+        (1, 'Full Wedding Planning', 'Comprehensive planning from concept to execution. We handle everything so you can enjoy the journey.',
+         '[{\"description\": \"Full Planning Services\", \"quantity\": 1, \"unit\": \"package\", \"rate\": 120000, \"total\": 120000}, {\"description\": \"Vendor Sourcing\", \"quantity\": 1, \"unit\": \"service\", \"rate\": 30000, \"total\": 30000}, {\"description\": \"Day-of Team (3 pax)\", \"quantity\": 1, \"unit\": \"team\", \"rate\": 45000, \"total\": 45000}]',
+         195000,
+         '[\"Complete vendor sourcing\", \"Contract negotiation\", \"Budget management\", \"Design concept\", \"Unlimited meetings\", \"Day-of team (3 coordinators)\", \"Rehearsal coordination\", \"Post-wedding wrap-up\"]',
+         '{\"meetings\": \"unlimited\", \"coordinators\": 3}'),
+        (2, 'Luxury Day-of Coordination', 'Premium day-of service with dedicated team for high-end weddings.',
+         '[{\"description\": \"Luxury Coordination\", \"quantity\": 1, \"unit\": \"event\", \"rate\": 75000, \"total\": 75000}, {\"description\": \"Assistant Team (2 pax)\", \"quantity\": 2, \"unit\": \"person\", \"rate\": 10000, \"total\": 20000}]',
+         95000,
+         '[\"Dedicated lead coordinator\", \"2 assistant coordinators\", \"Full vendor management\", \"Premium emergency kit\", \"Post-event cleanup supervision\"]',
+         '{\"hours\": 14, \"coordinators\": 3}'),
+        (2, 'Destination Wedding Planning', 'Complete planning for destination weddings anywhere in the Philippines.',
+         '[{\"description\": \"Destination Planning\", \"quantity\": 1, \"unit\": \"package\", \"rate\": 250000, \"total\": 250000}, {\"description\": \"Site Visits (3 trips)\", \"quantity\": 3, \"unit\": \"trips\", \"rate\": 15000, \"total\": 45000}, {\"description\": \"On-site Team\", \"quantity\": 1, \"unit\": \"team\", \"rate\": 80000, \"total\": 80000}]',
+         375000,
+         '[\"Location scouting\", \"Local vendor coordination\", \"Guest logistics management\", \"Accommodation coordination\", \"3 site visits\", \"On-site team of 4\", \"Welcome dinner coordination\", \"Post-wedding brunch\"]',
+         '{\"trips\": 3, \"coordinators\": 4, \"duration\": \"6+ months\"}')
+    ");
+    echo "Seeded coordinator_services\n";
+
     // Coordinator-Vendor affiliations table
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS coordinator_vendors (

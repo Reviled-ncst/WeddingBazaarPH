@@ -63,6 +63,27 @@ interface Review {
   user_name: string;
 }
 
+interface PricingItem {
+  description: string;
+  quantity?: number;
+  unit?: string;
+  rate?: number;
+  total?: number;
+}
+
+interface CoordinatorService {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  base_total: number;
+  pricing_items: PricingItem[];
+  inclusions: string[];
+  add_ons?: string[];
+  details?: Record<string, string | number>;
+  max_bookings_per_day: number;
+}
+
 interface CoordinatorDetail {
   id: number;
   user_id: number;
@@ -81,6 +102,7 @@ interface CoordinatorDetail {
   email: string;
   affiliated_vendors: AffiliatedVendor[];
   packages: CoordinatorPackage[];
+  services: CoordinatorService[];
   reviews: Review[];
   latitude?: number;
   longitude?: number;
@@ -153,7 +175,7 @@ export default function CoordinatorDetailPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
   const [expandedPackage, setExpandedPackage] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'packages' | 'vendors'>('packages');
+  const [activeTab, setActiveTab] = useState<'packages' | 'vendors' | 'services'>('packages');
   
   // User authentication state
   const [userId, setUserId] = useState<number | null>(null);
@@ -184,6 +206,41 @@ export default function CoordinatorDetailPage() {
       fetchCoordinator();
     }
   }, [coordinatorId]);
+
+  // Check if coordinator is saved
+  useEffect(() => {
+    const checkSaved = async () => {
+      if (!userId || !coordinatorId) return;
+      try {
+        const response = await coordinatorsApi.checkSaved(coordinatorId, userId);
+        if (response.success && response.data) {
+          setIsSaved((response.data as { is_saved: boolean }).is_saved);
+        }
+      } catch (error) {
+        console.error('Failed to check saved status:', error);
+      }
+    };
+    checkSaved();
+  }, [userId, coordinatorId]);
+
+  const handleToggleSave = async () => {
+    if (!userId) {
+      router.push('/login?redirect=' + encodeURIComponent(`/coordinators/${coordinatorId}`));
+      return;
+    }
+    
+    setSavingStatus(true);
+    try {
+      const response = await coordinatorsApi.toggleSaved(coordinatorId, userId);
+      if (response.success && response.data) {
+        setIsSaved((response.data as { is_saved: boolean }).is_saved);
+      }
+    } catch (error) {
+      console.error('Failed to toggle save:', error);
+    } finally {
+      setSavingStatus(false);
+    }
+  };
 
   const fetchCoordinator = async () => {
     setLoading(true);
@@ -243,6 +300,14 @@ export default function CoordinatorDetailPage() {
       return;
     }
     // Open message modal - the message will pre-fill with package inquiry
+    setShowMessageModal(true);
+  };
+
+  const handleMessageCoordinator = (serviceName?: string) => {
+    if (!userId) {
+      router.push('/login?redirect=' + encodeURIComponent(`/coordinators/${coordinatorId}`));
+      return;
+    }
     setShowMessageModal(true);
   };
 
@@ -377,6 +442,17 @@ export default function CoordinatorDetailPage() {
               >
                 <Users className="w-4 h-4" />
                 Vendor Network ({coordinator.affiliated_vendors?.length || 0})
+              </button>
+              <button
+                onClick={() => setActiveTab('services')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'services' 
+                    ? 'bg-pink-500 text-white' 
+                    : 'bg-dark-800 text-gray-400 hover:bg-dark-700'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                Services ({coordinator.services?.length || 0})
               </button>
             </div>
 
@@ -573,6 +649,92 @@ export default function CoordinatorDetailPage() {
               </Card>
             )}
 
+            {/* Services Section */}
+            {activeTab === 'services' && (
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-white">Coordination Services</h2>
+                  <span className="text-sm text-gray-400">Professional wedding coordination packages</span>
+                </div>
+                
+                {coordinator.services && coordinator.services.length > 0 ? (
+                  <div className="space-y-4">
+                    {coordinator.services.map((service) => (
+                      <div
+                        key={service.id}
+                        className="bg-dark-800/50 rounded-lg p-4 border border-dark-700 hover:border-pink-500/30 transition-colors"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="text-white font-semibold text-lg">{service.name}</h3>
+                            <p className="text-gray-400 text-sm">{service.description}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-pink-400">{formatPrice(service.base_total || service.price || 0)}</p>
+                            {service.max_bookings_per_day && (
+                              <p className="text-xs text-gray-500">Max {service.max_bookings_per_day} booking/day</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {service.pricing_items && service.pricing_items.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-sm text-gray-400 mb-2">Pricing Breakdown:</p>
+                            <div className="bg-dark-900/50 rounded-lg p-3 space-y-1">
+                              {service.pricing_items.map((item, idx) => (
+                                <div key={idx} className="flex justify-between text-sm">
+                                  <span className="text-gray-400">
+                                    {item.description}
+                                    {item.quantity && item.unit && item.rate && ` (${item.quantity} ${item.unit} × ${formatPrice(item.rate)})`}
+                                  </span>
+                                  {item.total && <span className="text-white">{formatPrice(item.total)}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {service.inclusions && service.inclusions.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-sm text-gray-400 mb-2">Inclusions:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {service.inclusions.map((inclusion, idx) => (
+                                <span key={idx} className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded text-xs">
+                                  ✓ {inclusion}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {service.add_ons && service.add_ons.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-sm text-gray-400 mb-2">Add-ons Available:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {service.add_ons.map((addon, idx) => (
+                                <span key={idx} className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded text-xs">
+                                  + {addon}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-4 pt-3 border-t border-dark-700 flex justify-end">
+                          <Button onClick={() => handleMessageCoordinator(service.name)}>
+                            <MessageCircle className="w-4 h-4 mr-2" />
+                            Inquire about this service
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-center py-8">No services listed yet. Contact the coordinator for custom quotes.</p>
+                )}
+              </Card>
+            )}
+
             {/* Reviews */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -679,6 +841,15 @@ export default function CoordinatorDetailPage() {
                 <Button variant="outline" className="w-full" size="lg" onClick={handleSendMessage}>
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Send Message
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={handleToggleSave}
+                  disabled={savingStatus}
+                >
+                  <Heart className={`w-4 h-4 mr-2 ${isSaved ? 'fill-pink-400 text-pink-400' : ''}`} />
+                  {savingStatus ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
                 </Button>
               </div>
 

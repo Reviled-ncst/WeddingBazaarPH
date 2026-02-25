@@ -130,6 +130,46 @@ export const coordinatorsApi = {
   },
   
   detail: (id: number) => api.get(`/coordinators/get.php?id=${id}`),
+  
+  // Saved coordinators
+  checkSaved: (coordinatorId: number, userId?: number) => {
+    const params = new URLSearchParams();
+    params.set('coordinator_id', coordinatorId.toString());
+    if (userId) params.set('user_id', userId.toString());
+    return api.get(`/saved/check-coordinator.php?${params.toString()}`);
+  },
+  
+  toggleSaved: (coordinatorId: number, userId: number) =>
+    api.post('/saved/toggle-coordinator.php', { coordinator_id: coordinatorId, user_id: userId }),
+  
+  listSaved: (userId: number) =>
+    api.get(`/saved/list-coordinators.php?user_id=${userId}`),
+  
+  // Bookings
+  createBooking: (data: {
+    user_id: number;
+    coordinator_id: number;
+    service_id?: number;
+    event_date: string;
+    notes?: string;
+    guest_count?: number;
+    event_location?: string;
+    event_latitude?: number;
+    event_longitude?: number;
+    travel_fee?: number;
+    total_price?: number;
+  }) => api.post('/coordinator-bookings/create.php', data),
+  
+  listBookings: (params: { user_id?: number; coordinator_id?: number; status?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params.user_id) searchParams.set('user_id', params.user_id.toString());
+    if (params.coordinator_id) searchParams.set('coordinator_id', params.coordinator_id.toString());
+    if (params.status) searchParams.set('status', params.status);
+    return api.get(`/coordinator-bookings/list.php?${searchParams.toString()}`);
+  },
+  
+  updateBookingStatus: (bookingId: number, status: string) =>
+    api.post('/coordinator-bookings/update-status.php', { booking_id: bookingId, status }),
 };
 
 // Bookings API
