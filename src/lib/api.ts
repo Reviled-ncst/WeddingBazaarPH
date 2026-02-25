@@ -128,6 +128,8 @@ export const coordinatorsApi = {
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     return api.get(`/coordinators/list.php?${searchParams.toString()}`);
   },
+  
+  detail: (id: number) => api.get(`/coordinators/get.php?id=${id}`),
 };
 
 // Bookings API

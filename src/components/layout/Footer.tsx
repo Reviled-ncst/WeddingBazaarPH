@@ -7,6 +7,7 @@ import { useCMSContext } from '@/contexts/CMSContext';
 const footerLinks = {
   providers: [
     { label: 'All Providers', href: '/vendors' },
+    { label: 'Coordinators', href: '/coordinators' },
     { label: 'Photographers', href: '/vendors?category=photographer' },
     { label: 'Venues', href: '/vendors?category=venue' },
     { label: 'Caterers', href: '/vendors?category=caterer' },
