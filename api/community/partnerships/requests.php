@@ -124,10 +124,23 @@ try {
                 ':commission_rate' => $data['commission_rate'] ?? null
             ]);
             
+            $partnerId = $conn->lastInsertId();
+            
+            // Log activity
+            $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip)");
+            $logStmt->execute([
+                ':user_id' => $data['coordinator_id'],
+                ':action' => 'partnership_request_sent',
+                ':entity_type' => 'partnership_request',
+                ':entity_id' => $partnerId,
+                ':description' => "Sent partnership request to vendor ID: {$data['vendor_id']}",
+                ':ip' => $_SERVER['REMOTE_ADDR'] ?? null
+            ]);
+            
             echo json_encode([
                 'success' => true,
                 'message' => 'Partnership request sent',
-                'data' => ['id' => $conn->lastInsertId()]
+                'data' => ['id' => $partnerId]
             ]);
             
         } else if ($action === 'respond') {
@@ -165,7 +178,29 @@ try {
                             ':vid' => $request['vendor_id'],
                             ':rate' => $request['commission_rate']
                         ]);
+                    
+                    // Log activity for partnership acceptance
+                    $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip)");
+                    $logStmt->execute([
+                        ':user_id' => $request['vendor_id'],
+                        ':action' => 'partnership_accepted',
+                        ':entity_type' => 'partnership_request',
+                        ':entity_id' => $data['id'],
+                        ':description' => "Accepted partnership with coordinator ID: {$request['coordinator_id']}",
+                        ':ip' => $_SERVER['REMOTE_ADDR'] ?? null
+                    ]);
                 }
+            } else {
+                // Log rejection
+                $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip)");
+                $logStmt->execute([
+                    ':user_id' => $data['responder_id'] ?? 0,
+                    ':action' => 'partnership_rejected',
+                    ':entity_type' => 'partnership_request',
+                    ':entity_id' => $data['id'],
+                    ':description' => "Rejected partnership request ID: {$data['id']}",
+                    ':ip' => $_SERVER['REMOTE_ADDR'] ?? null
+                ]);
             }
             
             echo json_encode([

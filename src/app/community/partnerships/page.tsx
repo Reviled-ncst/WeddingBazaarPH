@@ -15,11 +15,15 @@ import {
   XCircle,
   Clock,
   Percent,
-  MessageSquare
+  MessageSquare,
+  Plus,
+  X,
+  Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
@@ -59,22 +63,20 @@ const statusLabels: Record<string, { label: string; color: string; icon: typeof 
 
 export default function PartnershipsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ id: number; role: string; vendorId?: number; coordinatorId?: number } | null>(null);
+  const { user } = useAuth();
   const [partnerships, setPartnerships] = useState<Partnership[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'incoming' | 'outgoing' | 'active'>('active');
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-      } catch (e) {
-        console.error('Error parsing user');
-      }
-    }
-  }, []);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [searchVendor, setSearchVendor] = useState('');
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [selectedVendor, setSelectedVendor] = useState<any>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [requestForm, setRequestForm] = useState({
+    message: '',
+    partnership_type: 'preferred',
+    commission_rate: ''
+  });
 
   useEffect(() => {
     if (user) {
@@ -88,10 +90,10 @@ export default function PartnershipsPage() {
     try {
       const params = new URLSearchParams();
       
-      if (user.role === 'coordinator' && user.coordinatorId) {
-        params.set('coordinator_id', user.coordinatorId.toString());
-      } else if (user.role === 'vendor' && user.vendorId) {
-        params.set('vendor_id', user.vendorId.toString());
+      if (user.role === 'coordinator') {
+        params.set('coordinator_id', user.id.toString());
+      } else if (user.role === 'vendor') {
+        params.set('vendor_id', user.id.toString());
       }
       
       if (activeTab === 'active') {
@@ -115,6 +117,71 @@ export default function PartnershipsPage() {
     }
   };
 
+  const searchVendors = async () => {
+    if (!searchVendor.trim()) return;
+    try {
+      const response = await fetch(`${API_URL}/services/list.php?search=${encodeURIComponent(searchVendor)}&limit=10`);
+      const result = await response.json();
+      if (result.success) {
+        // Get unique vendors from services
+        const vendorMap = new Map();
+        result.data.forEach((s: any) => {
+          if (!vendorMap.has(s.vendor_id)) {
+            vendorMap.set(s.vendor_id, {
+              id: s.vendor_id,
+              business_name: s.vendor_name,
+              category: s.category,
+              rating: s.rating,
+              location: s.location,
+              images: s.images
+            });
+          }
+        });
+        setVendors(Array.from(vendorMap.values()));
+      }
+    } catch (error) {
+      console.error('Failed to search vendors:', error);
+    }
+  };
+
+  const handleSendRequest = async () => {
+    if (!user || !selectedVendor) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${API_URL}/community/partnerships/requests.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          coordinator_id: user.id,
+          vendor_id: selectedVendor.id,
+          message: requestForm.message,
+          partnership_type: requestForm.partnership_type,
+          commission_rate: requestForm.commission_rate ? parseFloat(requestForm.commission_rate) : null
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setShowRequestModal(false);
+        setSelectedVendor(null);
+        setVendors([]);
+        setSearchVendor('');
+        setRequestForm({ message: '', partnership_type: 'preferred', commission_rate: '' });
+        alert('Partnership request sent!');
+        fetchPartnerships();
+      } else {
+        alert(result.error || 'Failed to send request');
+      }
+    } catch (error) {
+      console.error('Failed to send request:', error);
+      alert('Failed to send partnership request');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleRespond = async (partnershipId: number, status: 'accepted' | 'rejected') => {
     try {
       const response = await fetch(`${API_URL}/community/partnerships/requests.php`, {
@@ -123,7 +190,8 @@ export default function PartnershipsPage() {
         body: JSON.stringify({
           action: 'respond',
           id: partnershipId,
-          status
+          status,
+          responder_id: user?.id
         })
       });
       
@@ -172,6 +240,13 @@ export default function PartnershipsPage() {
                 Build long-term collaborations with vendors and coordinators
               </p>
             </div>
+            
+            {user?.role === 'coordinator' && (
+              <Button onClick={() => setShowRequestModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Send Request
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -349,12 +424,13 @@ export default function PartnershipsPage() {
                 </h3>
                 <p className="text-gray-400 mb-4">
                   {user.role === 'coordinator' 
-                    ? 'Browse vendors to send partnership requests'
+                    ? 'Search for vendors to send partnership requests'
                     : 'Coordinators can send you partnership requests'}
                 </p>
                 {user.role === 'coordinator' && (
-                  <Button onClick={() => router.push('/vendors')}>
-                    Browse Vendors
+                  <Button onClick={() => setShowRequestModal(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Send Partnership Request
                   </Button>
                 )}
               </Card>
@@ -362,6 +438,144 @@ export default function PartnershipsPage() {
           </>
         )}
       </div>
+
+      {/* Send Partnership Request Modal */}
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Send Partnership Request</h2>
+              <button onClick={() => { setShowRequestModal(false); setSelectedVendor(null); setVendors([]); }} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {!selectedVendor ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Search for a Vendor</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={searchVendor}
+                      onChange={(e) => setSearchVendor(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && searchVendors()}
+                      placeholder="Search by vendor name or category..."
+                      className="flex-1 bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                    />
+                    <Button onClick={searchVendors}>
+                      <Search className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                {vendors.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-400">Select a vendor:</p>
+                    {vendors.map((vendor) => (
+                      <div
+                        key={vendor.id}
+                        onClick={() => setSelectedVendor(vendor)}
+                        className="flex items-center gap-4 p-4 bg-dark-800 rounded-lg cursor-pointer hover:bg-dark-700 transition-colors"
+                      >
+                        <div className="w-12 h-12 rounded-lg bg-dark-700 overflow-hidden">
+                          {vendor.images?.[0] ? (
+                            <img src={vendor.images[0]} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Users className="w-6 h-6 text-gray-600" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-white font-medium">{vendor.business_name}</p>
+                          <p className="text-sm text-gray-400 capitalize">{vendor.category} • {vendor.location}</p>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                          <span className="text-white">{vendor.rating?.toFixed(1) || 'N/A'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 p-4 bg-dark-800 rounded-lg">
+                  <div className="w-12 h-12 rounded-lg bg-dark-700 overflow-hidden">
+                    {selectedVendor.images?.[0] ? (
+                      <img src={selectedVendor.images[0]} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Users className="w-6 h-6 text-gray-600" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-medium">{selectedVendor.business_name}</p>
+                    <p className="text-sm text-gray-400 capitalize">{selectedVendor.category}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedVendor(null)}>
+                    Change
+                  </Button>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Partnership Type</label>
+                  <select
+                    value={requestForm.partnership_type}
+                    onChange={(e) => setRequestForm({ ...requestForm, partnership_type: e.target.value })}
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  >
+                    <option value="preferred">Preferred Partner - Standard collaboration</option>
+                    <option value="exclusive">Exclusive Partner - Priority for all events</option>
+                    <option value="referral">Referral Partner - Commission-based referrals</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Commission Rate (%)</label>
+                  <input
+                    type="number"
+                    value={requestForm.commission_rate}
+                    onChange={(e) => setRequestForm({ ...requestForm, commission_rate: e.target.value })}
+                    placeholder="Optional - e.g., 10"
+                    min="0"
+                    max="100"
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Message</label>
+                  <textarea
+                    value={requestForm.message}
+                    onChange={(e) => setRequestForm({ ...requestForm, message: e.target.value })}
+                    placeholder="Introduce yourself and explain why you'd like to partner..."
+                    rows={4}
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-dark-700">
+              <Button variant="outline" onClick={() => { setShowRequestModal(false); setSelectedVendor(null); setVendors([]); }}>
+                Cancel
+              </Button>
+              {selectedVendor && (
+                <Button 
+                  onClick={handleSendRequest}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Sending...' : 'Send Request'}
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

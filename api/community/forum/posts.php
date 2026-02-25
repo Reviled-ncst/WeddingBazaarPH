@@ -124,6 +124,17 @@ try {
         $conn->prepare("UPDATE forum_categories SET posts_count = posts_count + 1 WHERE id = :id")
             ->execute([':id' => $thread['category_id']]);
         
+        // Log activity
+        $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip)");
+        $logStmt->execute([
+            ':user_id' => $data['user_id'],
+            ':action' => 'forum_reply_posted',
+            ':entity_type' => 'forum_post',
+            ':entity_id' => $postId,
+            ':description' => "Replied to thread: {$thread['title']}",
+            ':ip' => $_SERVER['REMOTE_ADDR'] ?? null
+        ]);
+        
         echo json_encode([
             'success' => true,
             'message' => 'Reply posted successfully',

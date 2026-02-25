@@ -79,14 +79,38 @@ function HeaderContent() {
       return [{ href: '/', label: 'Home', icon: Home }];
     }
     
-    // Vendors, coordinators, and admins use in-dashboard navigation, so no header nav needed
-    if (user.role === 'vendor' || user.role === 'coordinator' || user.role === 'admin') {
-      return [];
+    if (user.role === 'vendor') {
+      return [
+        { href: '/vendor-dashboard', label: 'Dashboard', icon: Home },
+        { href: '/vendor-dashboard?tab=bookings', label: 'Bookings', icon: Calendar },
+        { href: '/vendor-dashboard?tab=services', label: 'Services', icon: Package },
+        { href: '/vendor-dashboard?tab=messages', label: 'Messages', icon: MessageSquare },
+        { href: '/community', label: 'Community', icon: Users2 },
+      ];
+    }
+    
+    if (user.role === 'coordinator') {
+      return [
+        { href: '/coordinator-dashboard', label: 'Dashboard', icon: Home },
+        { href: '/coordinator-dashboard?tab=events', label: 'Events', icon: Calendar },
+        { href: '/coordinator-dashboard?tab=clients', label: 'Clients', icon: Users },
+        { href: '/coordinator-dashboard?tab=messages', label: 'Messages', icon: MessageSquare },
+        { href: '/community', label: 'Community', icon: Users2 },
+      ];
+    }
+    
+    if (user.role === 'admin') {
+      return [
+        { href: '/admin', label: 'Dashboard', icon: Home },
+      ];
     }
     
     // Couple (individual)
     return [
-      { href: '/discover', label: 'Home', icon: Home },
+      { href: '/discover', label: 'Discover', icon: Home },
+      { href: '/dashboard?tab=bookings', label: 'Bookings', icon: Calendar },
+      { href: '/dashboard?tab=saved', label: 'Saved', icon: Bookmark },
+      { href: '/dashboard?tab=messages', label: 'Messages', icon: MessageSquare },
     ];
   };
 

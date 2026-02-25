@@ -81,6 +81,17 @@ try {
     
     $jobId = $conn->lastInsertId();
     
+    // Log activity
+    $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip)");
+    $logStmt->execute([
+        ':user_id' => $data['coordinator_id'],
+        ':action' => 'job_posting_created',
+        ':entity_type' => 'job_posting',
+        ':entity_id' => $jobId,
+        ':description' => "Created job posting: {$data['title']}",
+        ':ip' => $_SERVER['REMOTE_ADDR'] ?? null
+    ]);
+    
     echo json_encode([
         'success' => true,
         'message' => 'Job posting created successfully',

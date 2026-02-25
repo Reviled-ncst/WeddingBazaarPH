@@ -14,11 +14,13 @@ import {
   BadgeCheck,
   Percent,
   ArrowLeft,
-  Tag
+  Tag,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
@@ -64,10 +66,12 @@ const categoryOptions = [
 
 export default function AvailabilityBoardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ id: number; role: string } | null>(null);
+  const { user } = useAuth();
   const [availability, setAvailability] = useState<VendorAvailability[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   // Filters
   const [category, setCategory] = useState('');
@@ -75,15 +79,21 @@ export default function AvailabilityBoardPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
+  // Create form
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    available_from: '',
+    available_to: '',
+    locations: '',
+    services_offered: '',
+    special_rate: '',
+    regular_rate: '',
+    discount_percent: '',
+    max_bookings: '1'
+  });
+
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Error parsing user');
-      }
-    }
     fetchAvailability();
   }, [category, location, dateFrom, dateTo]);
 
@@ -106,6 +116,49 @@ export default function AvailabilityBoardPage() {
       console.error('Failed to fetch availability:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!user) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${API_URL}/community/availability/create.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vendor_id: user.id,
+          title: form.title,
+          description: form.description,
+          available_from: form.available_from,
+          available_to: form.available_to,
+          locations: form.locations.split('\n').filter(l => l.trim()),
+          services_offered: form.services_offered.split('\n').filter(s => s.trim()),
+          special_rate: form.special_rate ? parseFloat(form.special_rate) : null,
+          regular_rate: form.regular_rate ? parseFloat(form.regular_rate) : null,
+          discount_percent: form.discount_percent ? parseInt(form.discount_percent) : null,
+          max_bookings: parseInt(form.max_bookings) || 1
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setShowCreateModal(false);
+        setForm({
+          title: '', description: '', available_from: '', available_to: '',
+          locations: '', services_offered: '', special_rate: '', regular_rate: '',
+          discount_percent: '', max_bookings: '1'
+        });
+        fetchAvailability();
+      } else {
+        alert(result.error || 'Failed to post availability');
+      }
+    } catch (error) {
+      console.error('Failed to create availability:', error);
+      alert('Failed to post availability');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -163,7 +216,7 @@ export default function AvailabilityBoardPage() {
                 Filters
               </Button>
               {user?.role === 'vendor' && (
-                <Button onClick={() => router.push('/vendor-dashboard?tab=availability')}>
+                <Button onClick={() => setShowCreateModal(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Post Availability
                 </Button>
@@ -353,7 +406,7 @@ export default function AvailabilityBoardPage() {
                     : 'No vendors have posted availability yet'}
                 </p>
                 {user?.role === 'vendor' && (
-                  <Button onClick={() => router.push('/vendor-dashboard?tab=availability')}>
+                  <Button onClick={() => setShowCreateModal(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Post Your Availability
                   </Button>
@@ -363,6 +416,146 @@ export default function AvailabilityBoardPage() {
           </div>
         </div>
       </div>
+
+      {/* Create Availability Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Post Availability</h2>
+              <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Title *</label>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="e.g., December Wedding Slots Available"
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Add details about your availability, special packages, etc."
+                  rows={3}
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none resize-none"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Available From *</label>
+                  <input
+                    type="date"
+                    value={form.available_from}
+                    onChange={(e) => setForm({ ...form, available_from: e.target.value })}
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Available To *</label>
+                  <input
+                    type="date"
+                    value={form.available_to}
+                    onChange={(e) => setForm({ ...form, available_to: e.target.value })}
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Service Locations (one per line)</label>
+                <textarea
+                  value={form.locations}
+                  onChange={(e) => setForm({ ...form, locations: e.target.value })}
+                  placeholder="Metro Manila&#10;Tagaytay&#10;Boracay"
+                  rows={2}
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none resize-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Services Offered (one per line)</label>
+                <textarea
+                  value={form.services_offered}
+                  onChange={(e) => setForm({ ...form, services_offered: e.target.value })}
+                  placeholder="Full Day Coverage&#10;Half Day Coverage&#10;Same Day Edit"
+                  rows={2}
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none resize-none"
+                />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Regular Rate (₱)</label>
+                  <input
+                    type="number"
+                    value={form.regular_rate}
+                    onChange={(e) => setForm({ ...form, regular_rate: e.target.value })}
+                    placeholder="0"
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Special Rate (₱)</label>
+                  <input
+                    type="number"
+                    value={form.special_rate}
+                    onChange={(e) => setForm({ ...form, special_rate: e.target.value })}
+                    placeholder="0"
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Discount %</label>
+                  <input
+                    type="number"
+                    value={form.discount_percent}
+                    onChange={(e) => setForm({ ...form, discount_percent: e.target.value })}
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Max Bookings</label>
+                <input
+                  type="number"
+                  value={form.max_bookings}
+                  onChange={(e) => setForm({ ...form, max_bookings: e.target.value })}
+                  min="1"
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">How many bookings can you accept in this period?</p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-dark-700">
+              <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreate}
+                disabled={submitting || !form.title || !form.available_from || !form.available_to}
+              >
+                {submitting ? 'Posting...' : 'Post Availability'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

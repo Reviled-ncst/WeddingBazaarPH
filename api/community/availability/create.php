@@ -90,6 +90,17 @@ try {
             ':status' => $data['status'] ?? 'active'
         ]);
         
+        // Log activity
+        $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip)");
+        $logStmt->execute([
+            ':user_id' => $data['vendor_id'],
+            ':action' => 'availability_updated',
+            ':entity_type' => 'vendor_availability',
+            ':entity_id' => $data['id'],
+            ':description' => "Updated availability: {$data['title']}",
+            ':ip' => $_SERVER['REMOTE_ADDR'] ?? null
+        ]);
+        
         echo json_encode([
             'success' => true,
             'message' => 'Availability updated successfully',
@@ -122,6 +133,17 @@ try {
         ]);
         
         $availabilityId = $conn->lastInsertId();
+        
+        // Log activity
+        $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip)");
+        $logStmt->execute([
+            ':user_id' => $data['vendor_id'],
+            ':action' => 'availability_posted',
+            ':entity_type' => 'vendor_availability',
+            ':entity_id' => $availabilityId,
+            ':description' => "Posted availability: {$data['title']}",
+            ':ip' => $_SERVER['REMOTE_ADDR'] ?? null
+        ]);
         
         echo json_encode([
             'success' => true,

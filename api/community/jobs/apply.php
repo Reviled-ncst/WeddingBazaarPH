@@ -98,6 +98,17 @@ try {
     $conn->prepare("UPDATE job_postings SET applications_count = applications_count + 1 WHERE id = :id")
         ->execute([':id' => $data['job_id']]);
     
+    // Log activity
+    $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, entity_type, entity_id, description, ip_address) VALUES (:user_id, :action, :entity_type, :entity_id, :description, :ip)");
+    $logStmt->execute([
+        ':user_id' => $data['vendor_id'],
+        ':action' => 'job_application_submitted',
+        ':entity_type' => 'job_application',
+        ':entity_id' => $applicationId,
+        ':description' => "Applied to job: {$job['title']}",
+        ':ip' => $_SERVER['REMOTE_ADDR'] ?? null
+    ]);
+    
     echo json_encode([
         'success' => true,
         'message' => 'Application submitted successfully',

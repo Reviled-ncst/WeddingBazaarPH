@@ -17,11 +17,13 @@ import {
   CheckCircle,
   Star,
   ChevronDown,
-  ArrowLeft
+  ArrowLeft,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { useAuth } from '@/context/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/wedding-bazaar-api';
 
@@ -69,26 +71,43 @@ const urgencyColors: Record<string, string> = {
 
 export default function JobsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ id: number; role: string } | null>(null);
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   // Filters
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
   const [urgency, setUrgency] = useState('');
+  
+  // Job posting form
+  const [jobForm, setJobForm] = useState({
+    title: '',
+    description: '',
+    category: '',
+    location: '',
+    event_date: '',
+    budget_min: '',
+    budget_max: '',
+    urgency: 'medium',
+    requirements: '',
+    expires_in_days: '30'
+  });
+  
+  // Apply form
+  const [applyForm, setApplyForm] = useState({
+    cover_letter: '',
+    proposed_price: '',
+    availability_confirmed: false,
+    portfolio_links: ''
+  });
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Error parsing user');
-      }
-    }
     fetchJobs();
   }, [category, location, urgency]);
 
@@ -111,6 +130,92 @@ export default function JobsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateJob = async () => {
+    if (!user) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${API_URL}/community/jobs/create.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coordinator_id: user.id,
+          title: jobForm.title,
+          description: jobForm.description,
+          category: jobForm.category,
+          location: jobForm.location,
+          event_date: jobForm.event_date || null,
+          budget_min: jobForm.budget_min ? parseFloat(jobForm.budget_min) : null,
+          budget_max: jobForm.budget_max ? parseFloat(jobForm.budget_max) : null,
+          urgency: jobForm.urgency,
+          requirements: jobForm.requirements.split('\n').filter(r => r.trim()),
+          expires_in_days: parseInt(jobForm.expires_in_days)
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setShowCreateModal(false);
+        setJobForm({
+          title: '', description: '', category: '', location: '',
+          event_date: '', budget_min: '', budget_max: '', urgency: 'medium',
+          requirements: '', expires_in_days: '30'
+        });
+        fetchJobs();
+      } else {
+        alert(result.error || 'Failed to create job');
+      }
+    } catch (error) {
+      console.error('Failed to create job:', error);
+      alert('Failed to create job posting');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleApply = async () => {
+    if (!user || !selectedJob) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${API_URL}/community/jobs/apply.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: selectedJob.id,
+          vendor_id: user.id,
+          cover_letter: applyForm.cover_letter,
+          proposed_price: applyForm.proposed_price ? parseFloat(applyForm.proposed_price) : null,
+          availability_confirmed: applyForm.availability_confirmed,
+          portfolio_links: applyForm.portfolio_links.split('\n').filter(l => l.trim())
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setShowApplyModal(false);
+        setSelectedJob(null);
+        setApplyForm({
+          cover_letter: '', proposed_price: '', availability_confirmed: false, portfolio_links: ''
+        });
+        alert('Application submitted successfully!');
+        fetchJobs();
+      } else {
+        alert(result.error || 'Failed to apply');
+      }
+    } catch (error) {
+      console.error('Failed to apply:', error);
+      alert('Failed to submit application');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openApplyModal = (job: JobPosting) => {
+    setSelectedJob(job);
+    setShowApplyModal(true);
   };
 
   const formatBudget = (min: number | null, max: number | null) => {
@@ -331,7 +436,7 @@ export default function JobsPage() {
                           <span>{job.applications_count} applications</span>
                         </div>
                         {user?.role === 'vendor' ? (
-                          <Button size="sm">
+                          <Button size="sm" onClick={() => openApplyModal(job)}>
                             Apply Now
                           </Button>
                         ) : (
@@ -365,15 +470,236 @@ export default function JobsPage() {
         </div>
       </div>
 
-      {/* Create Job Modal - Placeholder */}
+      {/* Create Job Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-white mb-4">Post a Job</h2>
-            <p className="text-gray-400 mb-4">Job posting form coming soon...</p>
-            <Button variant="outline" onClick={() => setShowCreateModal(false)}>
-              Close
-            </Button>
+          <Card className="max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Post a Job</h2>
+              <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Job Title *</label>
+                <input
+                  type="text"
+                  value={jobForm.title}
+                  onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })}
+                  placeholder="e.g., Photographer for Beach Wedding"
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Category *</label>
+                  <select
+                    value={jobForm.category}
+                    onChange={(e) => setJobForm({ ...jobForm, category: e.target.value })}
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  >
+                    <option value="">Select category</option>
+                    {categoryOptions.filter(c => c.value).map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Location *</label>
+                  <input
+                    type="text"
+                    value={jobForm.location}
+                    onChange={(e) => setJobForm({ ...jobForm, location: e.target.value })}
+                    placeholder="e.g., Boracay, Aklan"
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Description *</label>
+                <textarea
+                  value={jobForm.description}
+                  onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })}
+                  placeholder="Describe the wedding, requirements, and what you're looking for..."
+                  rows={4}
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none resize-none"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Event Date</label>
+                  <input
+                    type="date"
+                    value={jobForm.event_date}
+                    onChange={(e) => setJobForm({ ...jobForm, event_date: e.target.value })}
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Urgency</label>
+                  <select
+                    value={jobForm.urgency}
+                    onChange={(e) => setJobForm({ ...jobForm, urgency: e.target.value })}
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  >
+                    <option value="low">Low - Flexible timeline</option>
+                    <option value="medium">Medium - Within a few weeks</option>
+                    <option value="high">High - Within a week</option>
+                    <option value="urgent">Urgent - ASAP</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Budget Min (₱)</label>
+                  <input
+                    type="number"
+                    value={jobForm.budget_min}
+                    onChange={(e) => setJobForm({ ...jobForm, budget_min: e.target.value })}
+                    placeholder="0"
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Budget Max (₱)</label>
+                  <input
+                    type="number"
+                    value={jobForm.budget_max}
+                    onChange={(e) => setJobForm({ ...jobForm, budget_max: e.target.value })}
+                    placeholder="0"
+                    className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Requirements (one per line)</label>
+                <textarea
+                  value={jobForm.requirements}
+                  onChange={(e) => setJobForm({ ...jobForm, requirements: e.target.value })}
+                  placeholder="Must have own equipment&#10;Experience with beach weddings&#10;Available for full day coverage"
+                  rows={3}
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none resize-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Expires In</label>
+                <select
+                  value={jobForm.expires_in_days}
+                  onChange={(e) => setJobForm({ ...jobForm, expires_in_days: e.target.value })}
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                >
+                  <option value="7">7 days</option>
+                  <option value="14">14 days</option>
+                  <option value="30">30 days</option>
+                  <option value="60">60 days</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-dark-700">
+              <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCreateJob}
+                disabled={submitting || !jobForm.title || !jobForm.category || !jobForm.location || !jobForm.description}
+              >
+                {submitting ? 'Posting...' : 'Post Job'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Apply Modal */}
+      {showApplyModal && selectedJob && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-white">Apply for Job</h2>
+                <p className="text-gray-400 text-sm mt-1">{selectedJob.title}</p>
+              </div>
+              <button onClick={() => { setShowApplyModal(false); setSelectedJob(null); }} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Cover Letter *</label>
+                <textarea
+                  value={applyForm.cover_letter}
+                  onChange={(e) => setApplyForm({ ...applyForm, cover_letter: e.target.value })}
+                  placeholder="Introduce yourself and explain why you're a great fit for this job..."
+                  rows={5}
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none resize-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Proposed Price (₱)</label>
+                <input
+                  type="number"
+                  value={applyForm.proposed_price}
+                  onChange={(e) => setApplyForm({ ...applyForm, proposed_price: e.target.value })}
+                  placeholder="Your quoted price for this job"
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none"
+                />
+                {selectedJob.budget_min || selectedJob.budget_max ? (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Client budget: {selectedJob.budget_min && `₱${selectedJob.budget_min.toLocaleString()}`}
+                    {selectedJob.budget_min && selectedJob.budget_max && ' - '}
+                    {selectedJob.budget_max && `₱${selectedJob.budget_max.toLocaleString()}`}
+                  </p>
+                ) : null}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Portfolio Links (one per line)</label>
+                <textarea
+                  value={applyForm.portfolio_links}
+                  onChange={(e) => setApplyForm({ ...applyForm, portfolio_links: e.target.value })}
+                  placeholder="https://yourportfolio.com&#10;https://instagram.com/youraccount"
+                  rows={3}
+                  className="w-full bg-dark-800 border border-dark-700 rounded-lg px-4 py-2 text-white focus:border-pink-500 focus:outline-none resize-none"
+                />
+              </div>
+              
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={applyForm.availability_confirmed}
+                  onChange={(e) => setApplyForm({ ...applyForm, availability_confirmed: e.target.checked })}
+                  className="w-4 h-4 rounded border-dark-600 text-pink-500 focus:ring-pink-500"
+                />
+                <span className="text-sm text-gray-300">
+                  I confirm I am available on {selectedJob.event_date 
+                    ? new Date(selectedJob.event_date).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'the event date'}
+                </span>
+              </label>
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-dark-700">
+              <Button variant="outline" onClick={() => { setShowApplyModal(false); setSelectedJob(null); }}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleApply}
+                disabled={submitting || !applyForm.cover_letter}
+              >
+                {submitting ? 'Submitting...' : 'Submit Application'}
+              </Button>
+            </div>
           </Card>
         </div>
       )}
