@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Menu, X, Heart, User, Search, Home, Users, LucideIcon, Calendar, Bookmark, MessageSquare, Settings, LogOut, ChevronDown, BarChart3, Package, Star, CalendarCheck, ClipboardList, ShieldCheck } from 'lucide-react';
+import { Menu, X, Heart, User, Search, Home, Users, Users2, LucideIcon, Calendar, Bookmark, MessageSquare, Settings, LogOut, ChevronDown, BarChart3, Package, Star, CalendarCheck, ClipboardList, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 
@@ -99,6 +99,7 @@ function HeaderContent() {
     if (user.role === 'vendor') {
       return [
         { href: '/vendor-dashboard/profile', label: 'Profile & Verification', icon: ShieldCheck },
+        { href: '/community', label: 'Community', icon: Users2 },
         { href: '/vendor-dashboard?tab=settings', label: 'Settings', icon: Settings },
       ];
     }
@@ -106,6 +107,7 @@ function HeaderContent() {
     if (user.role === 'coordinator') {
       return [
         { href: '/coordinator-dashboard/profile', label: 'Profile & Verification', icon: ShieldCheck },
+        { href: '/community', label: 'Community', icon: Users2 },
         { href: '/coordinator-dashboard?tab=settings', label: 'Settings', icon: Settings },
       ];
     }

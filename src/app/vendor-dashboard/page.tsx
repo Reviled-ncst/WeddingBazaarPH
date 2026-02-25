@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Users, MessageSquare, Star, Settings, DollarSign, BarChart3, Package, Edit, Trash2, ShieldCheck, AlertCircle, Eye, EyeOff, MoreVertical, Clock, CheckCircle, XCircle, CreditCard, Mail, Phone, User, Loader2 } from 'lucide-react';
+import { Calendar, Users, Users2, MessageSquare, Star, Settings, DollarSign, BarChart3, Package, Edit, Trash2, ShieldCheck, AlertCircle, Eye, EyeOff, MoreVertical, Clock, CheckCircle, XCircle, CreditCard, Mail, Phone, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -519,6 +519,7 @@ function VendorDashboardContent() {
     { id: 'services', label: 'Services', icon: Package },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
     { id: 'reviews', label: 'Reviews', icon: Star },
+    { id: 'community', label: 'Community', icon: Users2, href: '/community' },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -542,8 +543,12 @@ function VendorDashboardContent() {
               <button
                 key={tab.id}
                 onClick={() => {
-                  setActiveTab(tab.id);
-                  router.push(`/vendor-dashboard?tab=${tab.id}`, { scroll: false });
+                  if (tab.href) {
+                    router.push(tab.href);
+                  } else {
+                    setActiveTab(tab.id);
+                    router.push(`/vendor-dashboard?tab=${tab.id}`, { scroll: false });
+                  }
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
                   activeTab === tab.id

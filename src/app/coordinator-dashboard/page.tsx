@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Calendar, Users, MessageSquare, ClipboardList, Settings, Briefcase, CheckCircle, Clock, Shield, User } from 'lucide-react';
+import { Calendar, Users, Users2, MessageSquare, ClipboardList, Settings, Briefcase, CheckCircle, Clock, Shield, User } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -53,6 +53,7 @@ function CoordinatorDashboardContent() {
     { id: 'clients', label: 'Clients', icon: Users },
     { id: 'tasks', label: 'Tasks', icon: ClipboardList },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
+    { id: 'community', label: 'Community', icon: Users2, href: '/community' },
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -77,8 +78,12 @@ function CoordinatorDashboardContent() {
               <button
                 key={tab.id}
                 onClick={() => {
-                  setActiveTab(tab.id);
-                  router.push(`/coordinator-dashboard?tab=${tab.id}`, { scroll: false });
+                  if (tab.href) {
+                    router.push(tab.href);
+                  } else {
+                    setActiveTab(tab.id);
+                    router.push(`/coordinator-dashboard?tab=${tab.id}`, { scroll: false });
+                  }
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
                   activeTab === tab.id

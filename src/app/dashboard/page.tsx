@@ -8,8 +8,9 @@ import { Calendar, Heart, MessageSquare, Bookmark, Settings, Search, Star, MapPi
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { savedApi } from '@/lib/api';
+import { savedApi, coordinatorsApi } from '@/lib/api';
 import { formatPriceRange } from '@/lib/utils';
+import { Users } from 'lucide-react';
 import { MessagesTab } from '@/components/messaging/MessagesTab';
 import { PaymentModal } from '@/components/booking/PaymentModal';
 import { MessageVendorModal } from '@/components/messaging/MessageVendorModal';
@@ -53,6 +54,30 @@ interface RefundRequest {
   created_at: string;
 }
 
+interface SavedCoordinator {
+  id: number;
+  business_name: string;
+  location: string;
+  rating: number;
+  review_count: number;
+  price_range: string;
+  specialties: string[];
+  weddings_completed: number;
+}
+
+interface CoordinatorBooking {
+  id: number;
+  coordinator_id: number;
+  business_name: string;
+  service_name: string | null;
+  event_date: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  payment_status: 'pending' | 'paid' | 'partial' | 'refunded' | 'unpaid';
+  total_price: number;
+  notes: string | null;
+  created_at: string;
+}
+
 const statusConfig: Record<string, { label: string; variant: 'default' | 'success' | 'warning' | 'danger'; icon: typeof CheckCircle }> = {
   pending: { label: 'Pending', variant: 'warning', icon: Clock },
   confirmed: { label: 'Confirmed', variant: 'success', icon: CheckCircle },
@@ -83,6 +108,14 @@ function DashboardContent() {
   const [appealReason, setAppealReason] = useState('');
   const [appealLoading, setAppealLoading] = useState(false);
   const [appealError, setAppealError] = useState('');
+  
+  // Coordinator states
+  const [savedCoordinators, setSavedCoordinators] = useState<SavedCoordinator[]>([]);
+  const [coordinatorBookings, setCoordinatorBookings] = useState<CoordinatorBooking[]>([]);
+  const [loadingSavedCoordinators, setLoadingSavedCoordinators] = useState(false);
+  const [loadingCoordinatorBookings, setLoadingCoordinatorBookings] = useState(false);
+  const [savedProviderTab, setSavedProviderTab] = useState<'vendors' | 'coordinators'>('vendors');
+  const [bookingsProviderTab, setBookingsProviderTab] = useState<'vendors' | 'coordinators'>('vendors');
 
   useEffect(() => {
     if (tabParam) {
@@ -108,9 +141,11 @@ function DashboardContent() {
   useEffect(() => {
     if (user && (activeTab === 'saved' || activeTab === 'overview')) {
       fetchSavedVendors();
+      fetchSavedCoordinators();
     }
     if (user && (activeTab === 'bookings' || activeTab === 'overview')) {
       fetchBookings();
+      fetchCoordinatorBookings();
     }
   }, [user, activeTab]);
 
@@ -126,6 +161,36 @@ function DashboardContent() {
       console.error('Failed to fetch saved vendors:', error);
     } finally {
       setLoadingSaved(false);
+    }
+  };
+
+  const fetchSavedCoordinators = async () => {
+    if (!user) return;
+    setLoadingSavedCoordinators(true);
+    try {
+      const response = await coordinatorsApi.listSaved(user.id);
+      if (response.success && response.data) {
+        setSavedCoordinators(response.data as SavedCoordinator[]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch saved coordinators:', error);
+    } finally {
+      setLoadingSavedCoordinators(false);
+    }
+  };
+
+  const fetchCoordinatorBookings = async () => {
+    if (!user) return;
+    setLoadingCoordinatorBookings(true);
+    try {
+      const response = await coordinatorsApi.listBookings({ user_id: user.id });
+      if (response.success && response.data) {
+        setCoordinatorBookings(response.data as CoordinatorBooking[]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch coordinator bookings:', error);
+    } finally {
+      setLoadingCoordinatorBookings(false);
     }
   };
 
@@ -256,6 +321,18 @@ function DashboardContent() {
     }
   };
 
+  const handleUnsaveCoordinator = async (coordinatorId: number) => {
+    if (!user) return;
+    try {
+      const response = await coordinatorsApi.toggleSaved(coordinatorId, user.id);
+      if (response.success) {
+        setSavedCoordinators((prev) => prev.filter((c) => c.id !== coordinatorId));
+      }
+    } catch (error) {
+      console.error('Failed to unsave coordinator:', error);
+    }
+  };
+
   if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
@@ -381,143 +458,248 @@ function DashboardContent() {
         )}
 
         {activeTab === 'bookings' && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">My Bookings</h3>
-            {loadingBookings ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-400 mx-auto"></div>
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">My Bookings</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setBookingsProviderTab('vendors')}
+                  className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                    bookingsProviderTab === 'vendors'
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-dark-800 text-gray-400 hover:bg-dark-700'
+                  }`}
+                >
+                  Vendors ({bookings.length})
+                </button>
+                <button
+                  onClick={() => setBookingsProviderTab('coordinators')}
+                  className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                    bookingsProviderTab === 'coordinators'
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-dark-800 text-gray-400 hover:bg-dark-700'
+                  }`}
+                >
+                  <Users className="w-3 h-3 inline mr-1" />
+                  Coordinators ({coordinatorBookings.length})
+                </button>
               </div>
-            ) : bookings.length > 0 ? (
-              <div className="space-y-4">
-                {bookings.map((booking) => {
-                  const config = statusConfig[booking.status] || statusConfig.pending;
-                  const StatusIcon = config.icon;
-                  const isPaid = booking.payment_status === 'paid';
-                  const eventDate = new Date(booking.event_date);
-                  const isUpcoming = eventDate >= new Date();
-                  
-                  return (
-                    <div key={booking.id} className="border border-dark-700 rounded-lg p-4 hover:border-pink-500/30 transition-colors">
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Link href={`/vendors/${booking.vendor_id}`} className="text-white font-semibold hover:text-pink-400 transition-colors">
-                              {booking.business_name || booking.vendor_name}
-                            </Link>
-                            <Badge variant={config.variant} className="text-xs">
-                              <StatusIcon className="w-3 h-3 mr-1" />
-                              {config.label}
-                            </Badge>
-                          </div>
-                          <p className="text-gray-400 text-sm">{booking.service_name || 'Service'}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm">
-                            <span className="flex items-center gap-1 text-gray-400">
-                              <Calendar className="w-4 h-4" />
-                              {eventDate.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                            </span>
-                            <span className="text-pink-400 font-semibold">
-                              ₱{Number(booking.total_price).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {!isPaid && booking.status !== 'cancelled' && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => setPayingBooking(booking)}
-                              className="bg-pink-500 hover:bg-pink-600"
-                            >
-                              <CreditCard className="w-4 h-4 mr-1" />
-                              Pay Now
-                            </Button>
-                          )}
-                          {isPaid && booking.payment_status !== 'refunded' && !refundRequests[booking.id] && (
-                            <>
-                              <Badge variant="success" className="text-xs">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Paid
-                              </Badge>
-                              {booking.status !== 'completed' && booking.status !== 'refund_requested' && (
+            </div>
+
+            {/* Vendor Bookings */}
+            {bookingsProviderTab === 'vendors' && (
+              <Card className="p-6">
+                {loadingBookings ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-400 mx-auto"></div>
+                  </div>
+                ) : bookings.length > 0 ? (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => {
+                      const config = statusConfig[booking.status] || statusConfig.pending;
+                      const StatusIcon = config.icon;
+                      const isPaid = booking.payment_status === 'paid';
+                      const eventDate = new Date(booking.event_date);
+                      
+                      return (
+                        <div key={booking.id} className="border border-dark-700 rounded-lg p-4 hover:border-pink-500/30 transition-colors">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Link href={`/vendors/${booking.vendor_id}`} className="text-white font-semibold hover:text-pink-400 transition-colors">
+                                  {booking.business_name || booking.vendor_name}
+                                </Link>
+                                <Badge variant={config.variant} className="text-xs">
+                                  <StatusIcon className="w-3 h-3 mr-1" />
+                                  {config.label}
+                                </Badge>
+                              </div>
+                              <p className="text-gray-400 text-sm">{booking.service_name || 'Service'}</p>
+                              <div className="flex items-center gap-4 mt-2 text-sm">
+                                <span className="flex items-center gap-1 text-gray-400">
+                                  <Calendar className="w-4 h-4" />
+                                  {eventDate.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
+                                <span className="text-pink-400 font-semibold">
+                                  ₱{Number(booking.total_price).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {!isPaid && booking.status !== 'cancelled' && (
                                 <Button 
                                   size="sm" 
-                                  variant="outline"
-                                  onClick={() => setRefundingBooking(booking)}
-                                  className="text-orange-400 border-orange-400/30 hover:bg-orange-500/10"
+                                  onClick={() => setPayingBooking(booking)}
+                                  className="bg-pink-500 hover:bg-pink-600"
                                 >
-                                  <RotateCcw className="w-3 h-3 mr-1" />
-                                  Request Refund
+                                  <CreditCard className="w-4 h-4 mr-1" />
+                                  Pay Now
                                 </Button>
                               )}
-                            </>
-                          )}
-                          {/* Show refund status if there's an active refund request */}
-                          {refundRequests[booking.id] && (
-                            <div className="flex items-center gap-2">
-                              {(() => {
-                                const refund = refundRequests[booking.id];
-                                const statusInfo = getRefundStatusBadge(refund);
-                                return (
-                                  <>
-                                    <span title={statusInfo.description}>
-                                      <Badge variant={statusInfo.variant} className="text-xs">
-                                        <RotateCcw className="w-3 h-3 mr-1" />
-                                        {statusInfo.label}
-                                      </Badge>
-                                    </span>
-                                    {refund.status === 'vendor_rejected' && (
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        onClick={() => setAppealingRefund(refund)}
-                                        className="text-yellow-400 border-yellow-400/30 hover:bg-yellow-500/10"
-                                      >
-                                        <AlertTriangle className="w-3 h-3 mr-1" />
-                                        Appeal
-                                      </Button>
-                                    )}
-                                    {refund.vendor_notes && refund.status === 'vendor_rejected' && (
-                                      <span className="text-xs text-gray-400" title={refund.vendor_notes}>
-                                        (Vendor: {refund.vendor_notes.substring(0, 30)}...)
-                                      </span>
-                                    )}
-                                  </>
-                                );
-                              })()}
+                              {isPaid && booking.payment_status !== 'refunded' && !refundRequests[booking.id] && (
+                                <>
+                                  <Badge variant="success" className="text-xs">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Paid
+                                  </Badge>
+                                  {booking.status !== 'completed' && booking.status !== 'refund_requested' && (
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => setRefundingBooking(booking)}
+                                      className="text-orange-400 border-orange-400/30 hover:bg-orange-500/10"
+                                    >
+                                      <RotateCcw className="w-3 h-3 mr-1" />
+                                      Request Refund
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                              {refundRequests[booking.id] && (
+                                <div className="flex items-center gap-2">
+                                  {(() => {
+                                    const refund = refundRequests[booking.id];
+                                    const statusInfo = getRefundStatusBadge(refund);
+                                    return (
+                                      <>
+                                        <span title={statusInfo.description}>
+                                          <Badge variant={statusInfo.variant} className="text-xs">
+                                            <RotateCcw className="w-3 h-3 mr-1" />
+                                            {statusInfo.label}
+                                          </Badge>
+                                        </span>
+                                        {refund.status === 'vendor_rejected' && (
+                                          <Button 
+                                            size="sm" 
+                                            variant="outline"
+                                            onClick={() => setAppealingRefund(refund)}
+                                            className="text-yellow-400 border-yellow-400/30 hover:bg-yellow-500/10"
+                                          >
+                                            <AlertTriangle className="w-3 h-3 mr-1" />
+                                            Appeal
+                                          </Button>
+                                        )}
+                                        {refund.vendor_notes && refund.status === 'vendor_rejected' && (
+                                          <span className="text-xs text-gray-400" title={refund.vendor_notes}>
+                                            (Vendor: {refund.vendor_notes.substring(0, 30)}...)
+                                          </span>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+                              {booking.payment_status === 'refunded' && (
+                                <Badge variant="warning" className="text-xs">
+                                  <RotateCcw className="w-3 h-3 mr-1" />
+                                  Refunded
+                                </Badge>
+                              )}
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setMessagingVendor({ id: booking.vendor_id, name: booking.business_name || booking.vendor_name })}
+                              >
+                                <MessageSquare className="w-3 h-3 mr-1" />
+                                Message
+                              </Button>
+                              <Link href={`/vendors/${booking.vendor_id}`}>
+                                <Button variant="outline" size="sm">View Vendor</Button>
+                              </Link>
                             </div>
-                          )}
-                          {booking.payment_status === 'refunded' && (
-                            <Badge variant="warning" className="text-xs">
-                              <RotateCcw className="w-3 h-3 mr-1" />
-                              Refunded
-                            </Badge>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setMessagingVendor({ id: booking.vendor_id, name: booking.business_name || booking.vendor_name })}
-                          >
-                            <MessageSquare className="w-3 h-3 mr-1" />
-                            Message
-                          </Button>
-                          <Link href={`/vendors/${booking.vendor_id}`}>
-                            <Button variant="outline" size="sm">View Vendor</Button>
-                          </Link>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-400">
-                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No bookings yet</p>
-                <Button className="mt-4" onClick={() => router.push('/vendors')}>
-                  Find Services
-                </Button>
-              </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-400">
+                    <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No vendor bookings yet</p>
+                    <Button className="mt-4" onClick={() => router.push('/vendors')}>
+                      Find Vendors
+                    </Button>
+                  </div>
+                )}
+              </Card>
             )}
-          </Card>
+
+            {/* Coordinator Bookings */}
+            {bookingsProviderTab === 'coordinators' && (
+              <Card className="p-6">
+                {loadingCoordinatorBookings ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-400 mx-auto"></div>
+                  </div>
+                ) : coordinatorBookings.length > 0 ? (
+                  <div className="space-y-4">
+                    {coordinatorBookings.map((booking) => {
+                      const config = statusConfig[booking.status] || statusConfig.pending;
+                      const StatusIcon = config.icon;
+                      const isPaid = booking.payment_status === 'paid';
+                      const eventDate = new Date(booking.event_date);
+                      
+                      return (
+                        <div key={booking.id} className="border border-dark-700 rounded-lg p-4 hover:border-pink-500/30 transition-colors">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Link href={`/coordinators/${booking.coordinator_id}`} className="text-white font-semibold hover:text-pink-400 transition-colors">
+                                  {booking.business_name}
+                                </Link>
+                                <Badge variant="default" className="text-xs">
+                                  <Users className="w-2 h-2 mr-1" />
+                                  Coordinator
+                                </Badge>
+                                <Badge variant={config.variant} className="text-xs">
+                                  <StatusIcon className="w-3 h-3 mr-1" />
+                                  {config.label}
+                                </Badge>
+                              </div>
+                              <p className="text-gray-400 text-sm">{booking.service_name || 'Coordination Service'}</p>
+                              <div className="flex items-center gap-4 mt-2 text-sm">
+                                <span className="flex items-center gap-1 text-gray-400">
+                                  <Calendar className="w-4 h-4" />
+                                  {eventDate.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
+                                <span className="text-pink-400 font-semibold">
+                                  ₱{Number(booking.total_price).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {isPaid ? (
+                                <Badge variant="success" className="text-xs">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Paid
+                                </Badge>
+                              ) : booking.status !== 'cancelled' && (
+                                <Badge variant="warning" className="text-xs">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  Payment Pending
+                                </Badge>
+                              )}
+                              <Link href={`/coordinators/${booking.coordinator_id}`}>
+                                <Button variant="outline" size="sm">View Coordinator</Button>
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-400">
+                    <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No coordinator bookings yet</p>
+                    <Button className="mt-4" onClick={() => router.push('/coordinators')}>
+                      Find Coordinators
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            )}
+          </div>
         )}
 
         {/* Payment Modal */}
@@ -722,62 +904,158 @@ function DashboardContent() {
 
         {activeTab === 'saved' && (
           <div>
-            <h3 className="text-lg font-semibold text-white mb-4">Saved Providers</h3>
-            {loadingSaved ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-400 mx-auto"></div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Saved Providers</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSavedProviderTab('vendors')}
+                  className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                    savedProviderTab === 'vendors'
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-dark-800 text-gray-400 hover:bg-dark-700'
+                  }`}
+                >
+                  Vendors ({savedVendors.length})
+                </button>
+                <button
+                  onClick={() => setSavedProviderTab('coordinators')}
+                  className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                    savedProviderTab === 'coordinators'
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-dark-800 text-gray-400 hover:bg-dark-700'
+                  }`}
+                >
+                  <Users className="w-3 h-3 inline mr-1" />
+                  Coordinators ({savedCoordinators.length})
+                </button>
               </div>
-            ) : savedVendors.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {savedVendors.map((vendor) => (
-                  <Card key={vendor.id} className="p-4 hover:border-pink-500/30 transition-colors">
-                    <div className="flex justify-between items-start">
-                      <Link href={`/vendors/${vendor.id}`} className="flex-1">
-                        <h4 className="text-white font-semibold hover:text-pink-400 transition-colors">
-                          {vendor.business_name}
-                        </h4>
-                        <p className="text-pink-400 text-sm capitalize">{vendor.category}</p>
-                        <div className="flex items-center gap-2 mt-2 text-gray-400 text-sm">
-                          <MapPin className="w-3 h-3" />
-                          <span>{vendor.location}</span>
+            </div>
+
+            {/* Saved Vendors */}
+            {savedProviderTab === 'vendors' && (
+              <>
+                {loadingSaved ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-400 mx-auto"></div>
+                  </div>
+                ) : savedVendors.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {savedVendors.map((vendor) => (
+                      <Card key={vendor.id} className="p-4 hover:border-pink-500/30 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <Link href={`/vendors/${vendor.id}`} className="flex-1">
+                            <h4 className="text-white font-semibold hover:text-pink-400 transition-colors">
+                              {vendor.business_name}
+                            </h4>
+                            <p className="text-pink-400 text-sm capitalize">{vendor.category}</p>
+                            <div className="flex items-center gap-2 mt-2 text-gray-400 text-sm">
+                              <MapPin className="w-3 h-3" />
+                              <span>{vendor.location}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                              <span className="text-white text-sm">{vendor.rating.toFixed(1)}</span>
+                              <span className="text-gray-400 text-sm">({vendor.review_count} reviews)</span>
+                            </div>
+                            <p className="text-pink-400 text-sm mt-2">{formatPriceRange(vendor.price_range)}</p>
+                          </Link>
+                          <div className="flex flex-col gap-1">
+                            <button
+                              onClick={() => setMessagingVendor({ id: vendor.id, name: vendor.business_name })}
+                              className="p-2 text-gray-400 hover:text-pink-400 transition-colors"
+                              title="Message vendor"
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleUnsaveVendor(vendor.id)}
+                              className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                              title="Remove from saved"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                          <span className="text-white text-sm">{vendor.rating.toFixed(1)}</span>
-                          <span className="text-gray-400 text-sm">({vendor.review_count} reviews)</span>
-                        </div>
-                        <p className="text-pink-400 text-sm mt-2">{formatPriceRange(vendor.price_range)}</p>
-                      </Link>
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => setMessagingVendor({ id: vendor.id, name: vendor.business_name })}
-                          className="p-2 text-gray-400 hover:text-pink-400 transition-colors"
-                          title="Message vendor"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleUnsaveVendor(vendor.id)}
-                          className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                          title="Remove from saved"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="p-6">
+                    <div className="text-center py-12 text-gray-400">
+                      <Bookmark className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No saved vendors yet</p>
+                      <Button className="mt-4" onClick={() => router.push('/vendors')}>
+                        Browse Vendors
+                      </Button>
                     </div>
                   </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-6">
-                <div className="text-center py-12 text-gray-400">
-                  <Bookmark className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No saved providers yet</p>
-                  <Button className="mt-4" onClick={() => router.push('/vendors')}>
-                    Browse Services
-                  </Button>
-                </div>
-              </Card>
+                )}
+              </>
+            )}
+
+            {/* Saved Coordinators */}
+            {savedProviderTab === 'coordinators' && (
+              <>
+                {loadingSavedCoordinators ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-400 mx-auto"></div>
+                  </div>
+                ) : savedCoordinators.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {savedCoordinators.map((coordinator) => (
+                      <Card key={coordinator.id} className="p-4 hover:border-pink-500/30 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <Link href={`/coordinators/${coordinator.id}`} className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-white font-semibold hover:text-pink-400 transition-colors">
+                                {coordinator.business_name}
+                              </h4>
+                              <Badge variant="default" className="text-xs">
+                                <Users className="w-2 h-2 mr-1" />
+                                Coordinator
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 mt-2 text-gray-400 text-sm">
+                              <MapPin className="w-3 h-3" />
+                              <span>{coordinator.location}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                              <span className="text-white text-sm">{coordinator.rating.toFixed(1)}</span>
+                              <span className="text-gray-400 text-sm">({coordinator.review_count} reviews)</span>
+                            </div>
+                            {coordinator.weddings_completed > 0 && (
+                              <p className="text-emerald-400 text-xs mt-1">
+                                {coordinator.weddings_completed} weddings completed
+                              </p>
+                            )}
+                            <p className="text-pink-400 text-sm mt-2">{formatPriceRange(coordinator.price_range)}</p>
+                          </Link>
+                          <div className="flex flex-col gap-1">
+                            <button
+                              onClick={() => handleUnsaveCoordinator(coordinator.id)}
+                              className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                              title="Remove from saved"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="p-6">
+                    <div className="text-center py-12 text-gray-400">
+                      <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No saved coordinators yet</p>
+                      <Button className="mt-4" onClick={() => router.push('/coordinators')}>
+                        Browse Coordinators
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+              </>
             )}
           </div>
         )}
