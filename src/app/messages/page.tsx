@@ -119,7 +119,10 @@ function MessagesPageContent() {
   }, [vendorParam, conversations]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll within container only, not the whole page
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [messages, groupMessages]);
 
   const fetchConversations = async (id: number) => {
@@ -339,7 +342,7 @@ function MessagesPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-950">
+    <div className="h-screen bg-dark-950 overflow-hidden flex flex-col">
       {/* Header */}
       <div className="bg-dark-900/50 border-b border-dark-800">
         <div className="max-w-6xl mx-auto px-4 py-6">
@@ -388,7 +391,7 @@ function MessagesPageContent() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="flex-1 max-w-6xl mx-auto px-4 py-4 w-full overflow-hidden">
         {/* Direct Messages Tab */}
         {activeTab === 'direct' && (
           conversations.length === 0 ? (
@@ -401,7 +404,7 @@ function MessagesPageContent() {
               </Link>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-300px)]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
               {/* Direct Conversations List */}
               <Card className="md:col-span-1 overflow-hidden flex flex-col">
                 <div className="p-4 border-b border-dark-800">
